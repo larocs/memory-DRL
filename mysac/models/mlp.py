@@ -1,23 +1,88 @@
+from typing import Tuple
+
 import torch
 import torch.nn.functional as F
+from mysac.models.utils import fanin_init
 from torch import nn
+
+# Use the values as observed in Rlkit
+B_INIT_VALUE = 0.1
+W_INIT_VALUE = 3e-3
+
+# Default activation for every model
+activation = F.relu
+
+# Numerical stability
+LOG_SIG_MAX = 2
+LOG_SIG_MIN = -20
 
 
 class QModel(nn.Module):
+    """ A deep model that receives observations and actions, and outputs a
+    single real value.
+
+    Args:
+        obs_size: the observation dimension
+        num_actions: the actions dimension
+        hidden_sizes: the size for the hidden layers
+    """
+
     def __init__(self, obs_size: int, num_actions: int, hidden_sizes: int):
-        super(QModel).__init__()
+        super().__init__()
 
         self.layer1 = nn.Linear(obs_size + num_actions, hidden_sizes)
         self.layer2 = nn.Linear(hidden_sizes, hidden_sizes)
         self.layer3 = nn.Linear(hidden_sizes, 1)
 
-    def forward(self, observations, actions):
+        for layer in [self.layer1, self.layer2]:
+            layer.bias.data.fill_(B_INIT_VALUE)
+            fanin_init(layer.weight)
+
+        self.layer3.weight.data.uniform_(-W_INIT_VALUE, W_INIT_VALUE)
+        self.layer3.bias.data.uniform_(-W_INIT_VALUE, W_INIT_VALUE)
+
+    def forward(self, observations, actions) -> torch.tensor:
+        """ Returns a value for the pair observation/action """
         x = torch.cat([observations, actions], 1)
-        x = relu(self.layer1(x))
-        x = relu(self.layer2(x))
-        x = self.layer3(x)
+
+        x = activation(self.layer1(x))
+        x = activation(self.layer2(x))
+
+        return self.layer3(x)
 
 
-class AgentModel(nn.Module):
-    def __init__(self):
-        pass
+class PolicyModel(nn.Module):
+    """ Deep model for computing agent actions given an observation
+
+    Args:
+        obs_size: the observation dimension
+        num_actions: the actions dimension
+        hidden_sizes: the size for the hidden layers
+    """
+
+    def __init__(self, obs_size: int, num_actions: int, hidden_sizes: int):
+        super().__init__()
+
+        self.layer1 = nn.Linear(obs_size, hidden_sizes)
+        self.layer2 = nn.Linear(hidden_sizes, hidden_sizes)
+
+        self.mean = nn.Linear(hidden_sizes, num_actions)
+        self.log_std = nn.Linear(hidden_sizes, num_actions)
+
+        for layer in [self.layer1, self.layer2]:
+            layer.bias.data.fill_(B_INIT_VALUE)
+            fanin_init(layer.weight)
+
+        for layer in [self.mean, self.log_std]:
+            layer.weight.data.uniform_(-W_INIT_VALUE, W_INIT_VALUE)
+            layer.bias.data.uniform_(-W_INIT_VALUE, W_INIT_VALUE)
+
+    def forward(self, observations) -> Tuple[torch.tensor, torch.tensor]:
+        """ Returns an action for the given observation """
+        x = activation(self.layer1(observations))
+        x = activation(self.layer2(x))
+
+        mean = self.mean(x)
+        log_std = self.log_std(x)
+
+        return mean, torch.clamp(log_std, LOG_SIG_MIN, LOG_SIG_MAX)
