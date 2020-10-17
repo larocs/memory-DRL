@@ -71,10 +71,10 @@ class NumpySampledBuffer:
         actions = self.actions[sampled_indexes]
         terminals = self.terminals[sampled_indexes]
 
-        return (
-            observations,
-            next_observations,
-            rewards,
-            actions,
-            terminals
-        )
+        return {
+            'observations': np.array(observations),
+            'next_observations': np.array(next_observations),
+            'rewards': np.array(rewards),
+            'actions': np.array(actions),
+            'terminals': np.array(terminals)
+        }
