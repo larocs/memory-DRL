@@ -78,11 +78,14 @@ class PolicyModel(nn.Module):
             layer.bias.data.uniform_(-W_INIT_VALUE, W_INIT_VALUE)
 
     def forward(self, observations) -> Tuple[torch.tensor, torch.tensor]:
-        """ Returns an action for the given observation """
+        """ Returns an mean and a std for the actions Normal distribution given
+        observation """
         x = activation(self.layer1(observations))
         x = activation(self.layer2(x))
 
         mean = self.mean(x)
         log_std = self.log_std(x)
 
-        return mean, torch.clamp(log_std, LOG_SIG_MIN, LOG_SIG_MAX)
+        std = log_std.exp()
+
+        return mean, torch.clamp(std, LOG_SIG_MIN, LOG_SIG_MAX)
