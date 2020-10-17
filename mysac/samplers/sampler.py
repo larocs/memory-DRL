@@ -1,14 +1,15 @@
+from typing import Dict, List
+
+import numpy as np
+import torch
 from gym import Env
-from typing import Tuple, List
 
 
 class BasicTrajectorySampler:
     @staticmethod
     def sample_trajectory(env: Env, agent, max_steps_per_episode: int,
                           total_steps: int,
-                          deterministic: bool = False) -> Tuple[List[float], List[float],
-                                                                List[float], List[float],
-                                                                List[float]]:
+                          deterministic: bool = False) -> Dict[str, List[float]]:
         """ Sample a trajectory
 
         Args:
@@ -41,18 +42,20 @@ class BasicTrajectorySampler:
 
             while not done and episode_steps < max_steps_per_episode \
                     and steps < total_steps:
-                action = agent.get_action(
-                    observations=observation,
+                action, *_ = agent.get_action(
+                    observations=torch.tensor(observation),
                     reparametrize=False
                 )
 
-                next_observation, reward, done, _ = env.step()
+                action = action.numpy()
+
+                next_observation, reward, done, _ = env.step(action)
 
                 observations.append(observation)
                 next_observations.append(next_observation)
                 actions.append(action)
-                rewards.append(reward)
-                terminals.append(done)
+                rewards.append(np.array([reward]))
+                terminals.append(np.array([done]))
 
                 observation = next_observation
 
@@ -61,10 +64,10 @@ class BasicTrajectorySampler:
 
             episodes += 1
 
-        return (
-            observations,
-            next_observations,
-            rewards,
-            actions,
-            terminals
-        )
+        return {
+            'observations': np.array(observations),
+            'next_observations': np.array(next_observations),
+            'rewards': np.array(rewards),
+            'actions': np.array(actions),
+            'terminals': np.array(terminals)
+        }
