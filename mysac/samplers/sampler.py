@@ -5,9 +5,10 @@ from typing import Tuple, List
 class BasicTrajectorySampler:
     @staticmethod
     def sample_trajectory(env: Env, agent, max_steps_per_episode: int,
-                          total_steps: int) -> Tuple[List[float], List[float],
-                                                     List[float], List[float],
-                                                     List[float]]:
+                          total_steps: int,
+                          deterministic: bool = False) -> Tuple[List[float], List[float],
+                                                                List[float], List[float],
+                                                                List[float]]:
         """ Sample a trajectory
 
         Args:
@@ -15,6 +16,7 @@ class BasicTrajectorySampler:
             agent: the agent for sampling the actions given the observations
             max_steps_per_episode: the max number of steps per episode
             total_steps: the number of steps to be collected from the env
+            deterministic: if True, use the best actions only
 
         Returns:
             5 lists of float values: observations, next observations, rewards,
@@ -35,8 +37,14 @@ class BasicTrajectorySampler:
         while steps < total_steps:
             observation = env.reset()
 
-            while not done and steps < total_steps:
-                action = agent.get_action(observation)
+            episode_steps = 0
+
+            while not done and episode_steps < max_steps_per_episode \
+                    and steps < total_steps:
+                action = agent.get_action(
+                    observations=observation,
+                    reparametrize=False
+                )
 
                 next_observation, reward, done, _ = env.step()
 
@@ -49,6 +57,7 @@ class BasicTrajectorySampler:
                 observation = next_observation
 
                 steps += 1
+                episode_steps += 1
 
             episodes += 1
 
