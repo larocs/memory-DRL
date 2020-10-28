@@ -1,6 +1,12 @@
+import argparse
 import json
 from os import mkdir, path
-import argparse
+
+from mysac.batch.numpy_batch import NumpySampledBuffer
+from mysac.envs.pyrep_env import CartPoleEnv
+from mysac.models.mlp import PolicyModel, QModel
+from mysac.sac.sac import SACAgent
+from mysac.trainers.generic_train import generic_train
 
 
 def run_experiment_from_specs(experiment_folder: str):
@@ -10,12 +16,46 @@ def run_experiment_from_specs(experiment_folder: str):
         experiment_folder: the path to the experiment folder. If does not
             exists, it is created. If it already exists, we try to load a file
             with specs within it. """
-    try:
-        mkdir(experiment_folder)
 
-    except FileExistsError:
-        with open(path.join(experiment_folder, 'specs.json')) as specs_file:
-            train_specs = json.load(specs_file)
+    # Create folders for saving experiment stats
+    mkdir(experiment_folder)
+    mkdir(experiment_folder + '/models/')
+    mkdir(experiment_folder + '/stats/')
+
+    env = CartPoleEnv(headless=False)
+
+    buffer = NumpySampledBuffer(
+        size=int(1e6), observation_size=10, action_size=2)
+
+    agent = SACAgent(
+        # Env
+        env=env,
+
+        # Models
+        policy_model=PolicyModel(10, 2, 512),
+        q1_model=QModel(10, 2, 512),
+        q2_model=QModel(10, 2, 512),
+        q1_target=QModel(10, 2, 512),
+        q2_target=QModel(10, 2, 512),
+
+        # Hyperparams
+        gamma=0.99,
+        policy_lr=3e-4,
+        q_lr=3e-4,
+        alpha_lr=3e-4,
+        tau=5e-3
+    )
+
+    generic_train(
+        env=env,
+        agent=agent,
+        buffer=buffer,
+        experiment_folder=experiment_folder,
+        batch_size=256,
+        max_steps_per_episode=1000,
+        sampled_steps_per_epoch=1000,
+        train_steps_per_epoch=1000
+    )
 
 
 if __name__ == '__main__':

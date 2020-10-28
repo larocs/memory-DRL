@@ -14,7 +14,7 @@ class SACAgentTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.agent_model = get_mocked_policy_model()
+        cls.policy_model = get_mocked_policy_model()
 
         cls.q1_model = get_mocked_q_model()
         cls.q1_target = get_mocked_q_model()
@@ -22,35 +22,43 @@ class SACAgentTest(TestCase):
         cls.q2_model = get_mocked_q_model()
         cls.q2_target = get_mocked_q_model()
 
-        cls.sac_agent = SACAgent(
-            env=None,
+        cls.env = MagicMock()
+        cls.env.action_space.shape = (-DEFAULT_ACTION_SIZE,
+                                      DEFAULT_ACTION_SIZE)
+
+    def get_sac_agent(self):
+        return SACAgent(
+            env=self.env,
 
             # Models
-            agent_model=cls.agent_model,
-            q1_model=cls.q1_model,
-            q1_target=cls.q1_target,
-            q2_model=cls.q2_model,
-            q2_target=cls.q2_target,
+            policy_model=self.policy_model,
+            q1_model=self.q1_model,
+            q1_target=self.q1_target,
+            q2_model=self.q2_model,
+            q2_target=self.q2_target,
 
             # Params
             gamma=0.99,
-            agent_lr=0.1,
+            policy_lr=0.1,
             q_lr=0.1,
-            alpha_lr=0.1
+            alpha_lr=0.1,
+            tau=0.1
         )
 
     @patch('mysac.sac.sac.Normal.sample')
     def test_get_actions(self, normal_mocked):
         """ Tests the interface for getting action """
+        sac_agent = self.get_sac_agent()
+
         actions = torch.ones(1, DEFAULT_ACTION_SIZE)
         observations = torch.ones(1, DEFAULT_OBS_SIZE)
 
-        expected_mean, expected_std = self.agent_model(observations)
+        expected_mean, expected_std = self.policy_model(observations)
 
-        normal_mocked.side_effect = lambda x: x + 0.1
+        normal_mocked.return_value = expected_mean + 0.1
 
-        with self.subTest('Test the deterministic output of the agent'):
-            returned_tanh_mean, returned_mean = self.sac_agent.get_action(
+        with self.subTest('Test the deterministic output of the policy'):
+            returned_tanh_mean, returned_mean, _ = sac_agent.get_action(
                 observations=observations, deterministic=True)
 
             self.assertEqual(
@@ -64,8 +72,78 @@ class SACAgentTest(TestCase):
             )
 
         with self.subTest('Test the action sampling without reparam trick'):
-            returned_tanh_mean, returned_mean = self.sac_agent.get_action(
+            returned_tanh_mean, returned_mean, _ = sac_agent.get_action(
                 observations=observations, deterministic=False,
                 reparametrize=False)
 
             # TODO: finish this test
+
+    @patch('mysac.sac.sac.Normal.log_prob')
+    @patch('mysac.sac.sac.Normal.sample')
+    def test_train_from_batch(self, sample_mock: MagicMock,
+                              log_prob: MagicMock):
+        """
+        Tests the backward pass for the SACAgent
+        """
+
+        sample_mock.return_value = torch.ones(1, 3)
+        log_prob.return_value = torch.ones(1, 3)
+
+        # Mock a single transition:
+        #  R: 10
+        #  D: 0
+        #  S: (1, 1)
+        #  A: (2, 2, 2)
+        #  S': (2, 2)
+        batch = dict()
+        batch['rewards'] = torch.tensor([[10]], dtype=torch.float)
+        batch['terminals'] = torch.tensor([[0]], dtype=torch.float)
+        batch['observations'] = torch.tensor([[1, 1]], dtype=torch.float)
+        batch['next_observations'] = torch.tensor([[2, 2]], dtype=torch.float)
+        batch['actions'] = torch.tensor(
+            [[-0.5691, -0.1300,  0.2416]], dtype=torch.float)
+
+        sac_agent = self.get_sac_agent()
+        sac_agent.debug = True
+
+        sac_agent.train_from_samples(batch)
+
+        self.assertEqual(
+            torch.tensor(
+                [p.sum() for p in sac_agent.policy.parameters()]
+            ).sum().item(),
+            -2.8618388175964355,
+            'Test the backward for the policy model'
+        )
+
+        self.assertEqual(
+            torch.tensor(
+                [p.sum() for p in sac_agent.q1.parameters()]
+            ).sum().item(),
+            0.3352656960487366,
+            'Test the backward for the q1 model'
+        )
+
+        self.assertEqual(
+            torch.tensor(
+                [p.sum() for p in sac_agent.q1_target.parameters()]
+            ).sum().item(),
+            0.15526564419269562,
+            'Test the backward for the q1_target model'
+        )
+
+        self.assertEqual(
+            torch.tensor(
+                [p.sum() for p in sac_agent.q2.parameters()]
+            ).sum().item(),
+            0.3352656960487366,
+            'Test the backward for the q2 model'
+        )
+
+        self.assertEqual(
+            torch.tensor(
+                [p.sum() for p in sac_agent.q2_target.parameters()]
+            ).sum().item(),
+            0.15526564419269562,
+            'Test the backward for the q2_target model'
+        )

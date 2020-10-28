@@ -55,7 +55,7 @@ class BasicTrajectorySampler:
                 next_observations.append(next_observation)
                 actions.append(action)
                 rewards.append(np.array([reward]))
-                terminals.append(np.array([done]))
+                terminals.append(np.array([int(done)]))
 
                 observation = next_observation
 

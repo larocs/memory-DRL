@@ -32,14 +32,15 @@ class QModel(nn.Module):
 
         self.layer1 = nn.Linear(obs_size + num_actions, hidden_sizes)
         self.layer2 = nn.Linear(hidden_sizes, hidden_sizes)
-        self.layer3 = nn.Linear(hidden_sizes, 1)
+        self.layer3 = nn.Linear(hidden_sizes, hidden_sizes)
+        self.layer4 = nn.Linear(hidden_sizes, 1)
 
-        for layer in [self.layer1, self.layer2]:
+        for layer in [self.layer1, self.layer2, self.layer4]:
             layer.bias.data.fill_(B_INIT_VALUE)
             fanin_init(layer.weight)
 
-        self.layer3.weight.data.uniform_(-W_INIT_VALUE, W_INIT_VALUE)
-        self.layer3.bias.data.uniform_(-W_INIT_VALUE, W_INIT_VALUE)
+        self.layer4.weight.data.uniform_(-W_INIT_VALUE, W_INIT_VALUE)
+        self.layer4.bias.data.uniform_(-W_INIT_VALUE, W_INIT_VALUE)
 
     def forward(self, observations, actions) -> torch.tensor:
         """ Returns a value for the pair observation/action """
@@ -47,8 +48,9 @@ class QModel(nn.Module):
 
         x = activation(self.layer1(x))
         x = activation(self.layer2(x))
+        x = activation(self.layer3(x))
 
-        return self.layer3(x)
+        return self.layer4(x)
 
 
 class PolicyModel(nn.Module):
@@ -65,11 +67,12 @@ class PolicyModel(nn.Module):
 
         self.layer1 = nn.Linear(obs_size, hidden_sizes)
         self.layer2 = nn.Linear(hidden_sizes, hidden_sizes)
+        self.layer3 = nn.Linear(hidden_sizes, hidden_sizes)
 
         self.mean = nn.Linear(hidden_sizes, num_actions)
         self.log_std = nn.Linear(hidden_sizes, num_actions)
 
-        for layer in [self.layer1, self.layer2]:
+        for layer in [self.layer1, self.layer2, self.layer3]:
             layer.bias.data.fill_(B_INIT_VALUE)
             fanin_init(layer.weight)
 

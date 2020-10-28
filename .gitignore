@@ -33,6 +33,8 @@ Latest commit 14f8a8b on 11 Apr
 @arcresu@shiftkey@Lucretiel@Harrison-G@jwg4@GabrielC101@misaelnieto@pmsosa@svkampen@vltr@thedrow@matheussl
 138 lines (112 sloc)  1.99 KB
  
+experiments/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

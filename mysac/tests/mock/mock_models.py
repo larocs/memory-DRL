@@ -19,7 +19,7 @@ class MockedQmodel(torch.nn.Module):
 
     def forward(self, observations, actions):
         """ Maps (observations, action) into values """
-        x = torch.cat([observations, actions])
+        x = torch.cat([observations, actions], 1)
 
         return self.layer(x)
 

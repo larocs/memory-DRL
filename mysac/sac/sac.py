@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from gym import Env
 from mysac.sac.utils import update_target_network
+from torch import autograd
 from torch.distributions import Normal
 
 
@@ -25,7 +26,10 @@ class SACAgent:
                  policy_lr: float,
                  q_lr: float,
                  alpha_lr: float,
-                 tau: float):
+                 tau: float,
+
+                 # Metaparams
+                 debug: bool = False):
         self.env = env
 
         # Models
@@ -37,7 +41,7 @@ class SACAgent:
         self.q2 = q2_model
         self.q2_target = q2_target
 
-        self.log_alpha = torch.ones(1, requires_grad=True)
+        self.log_alpha = torch.zeros(1, requires_grad=True)
         self.target_entropy = -np.prod(self.env.action_space.shape).item()
 
         # Hyperparams
@@ -72,11 +76,16 @@ class SACAgent:
             lr=self.alpha_lr
         )
 
+        # Metaparams
+        self.debug = debug
+
     def get_action(
             self,
             observations: torch.tensor,
             reparametrize: bool = False,
-            deterministic: bool = False) -> Tuple[torch.tensor, torch.tensor]:
+            deterministic: bool = False,
+            with_log_prob: bool = False,
+            debug: bool = False) -> Tuple[torch.tensor, torch.tensor]:
         """ Returns an action for the given observation
 
         If the desired action is not deterministic, then we sample it from a
@@ -106,20 +115,25 @@ class SACAgent:
         else:
             # If the action is not deterministic, use the reparametrization
             # trick
-            sampled_action = (
-                mean + std * Normal(
-                    torch.zeros(mean.size()),
-                    torch.zeros(std.size())
-                ).sample()
-            )
+            noise = Normal(
+                torch.zeros(mean.size()),
+                torch.ones(std.size()))\
+                .sample()
 
-            sampled_action.requires_grad()
+            sampled_action = mean + std * noise
+
+            sampled_action.requires_grad_()
 
         action = sampled_action
         tanh_action = torch.tanh(sampled_action)
 
-        log_prob = Normal(mean, std).log_prob(action) - \
-            torch.log(1 - tanh_action * tanh_action + 1e-6)
+        log_prob = None
+
+        if with_log_prob:
+            log_prob = Normal(mean, std).log_prob(action) - \
+                torch.log(1 - tanh_action * tanh_action + 1e-6)
+
+            log_prob = log_prob.sum(dim=1, keepdim=True)
 
         return tanh_action, action, log_prob
 
@@ -133,32 +147,44 @@ class SACAgent:
 
         sampled_actions, _, log_prob = self.get_action(
             observations=observations,
-            reparametrize=True
+            reparametrize=True,
+            with_log_prob=True,
+            debug=self.debug
         )
 
         # Alpha loss
-        alpha_loss = -(self.log_alpha * (log_prob + self.target_entropy)
-                       .detach()).mean()
+        alpha_loss = -(self.log_alpha * (log_prob +
+                                         self.target_entropy).detach()).mean()
+
         self.alpha_optimizer.zero_grad()
         alpha_loss.backward()
         self.alpha_optimizer.step()
-        alpha = self.log_alpha.exp()
+        alpha = self.log_alpha.exp().detach()
 
         # Policy loss
         q_value = torch.min(
-            self.q1(observations, sampled_actions)
+            self.q1(observations, sampled_actions),
+            self.q2(observations, sampled_actions)
         )
 
-        policy_loss = (alpha * log_prob - q_value)
+        policy_loss = (alpha * log_prob - q_value).mean()
+
+        # print('Alpha:', alpha)
+        # print('Q value:', q_value)
+        # print('Policy loss:', policy_loss)
 
         # Q lossess
         q1_prediction = self.q1(observations, actions)
         q2_prediction = self.q2(observations, actions)
 
         next_actions, _, next_log_prob = self.get_action(
-            observations=observations,
-            reparametrize=True
+            observations=next_observations,
+            reparametrize=True,
+            with_log_prob=True
         )
+
+        # print('Next actions:', next_actions)
+        # print('Next log prob:', next_log_prob)
 
         target_q_values = torch.min(
             self.q1_target(next_observations, next_actions),

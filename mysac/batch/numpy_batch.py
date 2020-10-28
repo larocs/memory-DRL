@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Tuple, List
+import torch
 
 
 class NumpySampledBuffer:
@@ -48,7 +49,6 @@ class NumpySampledBuffer:
         assert actions.shape[0] == new_steps
         assert terminals.shape[0] == new_steps
 
-        print('Observations:', self.observations)
         self.observations = self._roll_and_add(self.observations, observations)
         self.next_observations = self._roll_and_add(
             self.next_observations, next_observations)
@@ -56,14 +56,18 @@ class NumpySampledBuffer:
         self.actions = self._roll_and_add(self.actions, actions)
         self.terminals = self._roll_and_add(self.terminals, terminals)
 
-        if self.ix < self.size:
-            self.ix += new_steps
+        self.ix = min(self.ix + new_steps, self.size - 1)
+
+        assert 0 not in self.observations[:self.ix - 1].sum(axis=1)
+        assert 0 not in self.next_observations[:self.ix - 1].sum(axis=1)
+        assert 0 not in self.rewards[:self.ix - 1].sum(axis=1)
+        assert 0 not in self.actions[:self.ix - 1].sum(axis=1)
 
     def sample(self, n_samples: int) -> Tuple[List[float], List[float],
                                               List[float], List[float],
                                               List[float]]:
         """ Sample n transitions from buffer """
-        sampled_indexes = np.random.random_integers(0, self.ix, n_samples)
+        sampled_indexes = np.random.random_integers(0, self.ix - 1, n_samples)
 
         observations = self.observations[sampled_indexes]
         next_observations = self.next_observations[sampled_indexes]
@@ -72,9 +76,9 @@ class NumpySampledBuffer:
         terminals = self.terminals[sampled_indexes]
 
         return {
-            'observations': np.array(observations),
-            'next_observations': np.array(next_observations),
-            'rewards': np.array(rewards),
-            'actions': np.array(actions),
-            'terminals': np.array(terminals)
+            'observations': torch.tensor(observations, dtype=torch.float),
+            'next_observations': torch.tensor(next_observations, dtype=torch.float),
+            'rewards': torch.tensor(rewards, dtype=torch.float),
+            'actions': torch.tensor(actions, dtype=torch.float),
+            'terminals': torch.tensor(terminals, dtype=torch.float)
         }
