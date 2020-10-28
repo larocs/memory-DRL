@@ -1,5 +1,7 @@
 import argparse
 import json
+import subprocess
+from datetime import datetime
 from os import mkdir, path
 
 from mysac.batch.numpy_batch import NumpySampledBuffer
@@ -21,6 +23,17 @@ def run_experiment_from_specs(experiment_folder: str):
     mkdir(experiment_folder)
     mkdir(experiment_folder + '/models/')
     mkdir(experiment_folder + '/stats/')
+
+    meta = {
+        'branch': subprocess.check_output(
+            ["git", "branch"]).decode(),
+        'commit': subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"]).decode(),
+        'date': datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+    }
+
+    with open(experiment_folder + '/meta.json', 'w') as meta_file:
+        json.dump(meta, meta_file)
 
     env = CartPoleEnv(headless=False)
 
