@@ -1,10 +1,10 @@
+# pylint: disable=no-member
 from typing import Tuple
 
 import numpy as np
 import torch
 from gym import Env
 from mysac.sac.utils import update_target_network
-from torch import autograd
 from torch.distributions import Normal
 
 

@@ -1,7 +1,6 @@
 from pyrep import PyRep
 from gym import Env, spaces
 
-from pyrep.robots.robot_component import RobotComponent
 from pyrep.objects.shape import Shape
 from pyrep.objects.joint import Joint
 from pyrep.backend.sim import simGetObjectVelocity
@@ -22,10 +21,19 @@ def min_max_norm(x, min, max):
 
 class CartPoleEnv(Env):
     def __init__(self,
-                 last_n_frames=10,
+                 last_n_frames=50,
                  buffer_for_rnn=False,
                  normalize_observation=False,
-                 headless=True):
+                 headless=False,
+                 height_limit=-0.4,
+                 max_steps_under_height_limit=250):
+        self.total_steps = 0
+        self.total_reward = 0
+
+        self.height_limit = -0.4
+        self.max_steps_under_height_limit = max_steps_under_height_limit
+        self.total_steps_under_height_limit = 0
+
         self.pr = PyRep()
         self.pr.launch(
             '/home/samuel/Develop/IC/cartpole2d_rnn/scenes/cart_pole_2d_up.ttt',
@@ -55,7 +63,7 @@ class CartPoleEnv(Env):
         self.buffer_for_rnn = buffer_for_rnn
         if self.buffer_for_rnn:
             # Sequence len: 50, obs len: 10
-            self.last_actions = np.zeros((last_n_frames, 10))
+            self.last_actions = np.zeros((last_n_frames, 10)).astype('float32')
 
     def render(_):
         pass
@@ -89,19 +97,18 @@ class CartPoleEnv(Env):
             obs = np.array(obs).astype('float32')
 
         if self.buffer_for_rnn:
-            self.last_actions = np.roll(self.last_actions, 10)
-            self.last_actions[:10] = obs
+            self.last_actions = np.roll(self.last_actions, -10)
+            self.last_actions[-1] = obs
             obs = self.last_actions
 
-        return obs
+        return obs.astype('float32')
 
     def step(self, action):
-        v, v1 = 2*action
+        self.total_steps += 1
 
-        # if self.buffer_for_rnn:
-        #     v, v1 = action[0]
-        # else:
-        #     v, v1 = action
+        done = False
+
+        v, v1 = 2*action
 
         self.slider.set_joint_target_velocity(v)
         self.slider2.set_joint_target_velocity(v1)
@@ -111,12 +118,25 @@ class CartPoleEnv(Env):
         height_of_mass = self.mass.get_position()[2]
         reward = height_of_mass - (v**2) * 0.0005 - (v1**2) * 0.0005
 
+        # Controls the end of the episode by the height limit
+        if height_of_mass < self.height_limit:
+            self.total_steps_under_height_limit += 1
+        else:
+            self.total_steps_under_height_limit = 0
+
+        if self.total_steps_under_height_limit >= self.max_steps_under_height_limit:
+            done = True
+
         self.episode_steps += 1
+        self.total_reward += reward
 
         return obs, reward, False, ''
 
     def reset(self):
+        self.total_reward = 0
         self.episode_steps = 0
+
+        self.total_steps_under_height_limit = 0
 
         if self.buffer_for_rnn:
             # Sequence len: 100, obs len: 10
@@ -140,7 +160,7 @@ if __name__ == '__main__':
         print("Episode ", e)
         env.reset()
 
-        for ts in range(500):
+        for ts in range(2):
             # print("Step ", ts)
             state, _, _, _ = env.step(env.action_space.sample())
 

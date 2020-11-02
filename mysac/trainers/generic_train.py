@@ -54,7 +54,6 @@ def generic_train(
 
         buffer.add_trajectory(**trajectory)
 
-        # Train
         for _ in tqdm(range(train_steps_per_epoch)):
             batch = buffer.sample(batch_size)
             agent.train_from_samples(batch=batch)

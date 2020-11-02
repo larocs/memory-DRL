@@ -1,3 +1,5 @@
+# pylint: disable=no-member
+# pylint: disable=not-callable
 import numpy as np
 from typing import Tuple, List
 import torch
@@ -58,11 +60,6 @@ class NumpySampledBuffer:
 
         self.ix = min(self.ix + new_steps, self.size - 1)
 
-        assert 0 not in self.observations[:self.ix - 1].sum(axis=1)
-        assert 0 not in self.next_observations[:self.ix - 1].sum(axis=1)
-        assert 0 not in self.rewards[:self.ix - 1].sum(axis=1)
-        assert 0 not in self.actions[:self.ix - 1].sum(axis=1)
-
     def sample(self, n_samples: int) -> Tuple[List[float], List[float],
                                               List[float], List[float],
                                               List[float]]:
@@ -82,3 +79,25 @@ class NumpySampledBuffer:
             'actions': torch.tensor(actions, dtype=torch.float),
             'terminals': torch.tensor(terminals, dtype=torch.float)
         }
+
+
+class NumpySampledBufferForRNN(NumpySampledBuffer):
+    """
+    Buffer whose sample is implemented with Numpy
+
+    Args:
+        size: the max size of the buffer
+        observation_size: the size of the observation
+        action_size: the size of the action
+    """
+
+    def __init__(self, size: int, observation_size: int, action_size: int,
+                 frames: int):
+        self.observations = np.zeros((size, frames, observation_size))
+        self.next_observations = np.zeros((size, frames, observation_size))
+        self.rewards = np.zeros((size, 1))
+        self.actions = np.zeros((size, action_size))
+        self.terminals = np.zeros((size, 1))
+
+        self.ix = 0
+        self.size = size
