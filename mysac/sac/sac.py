@@ -196,6 +196,10 @@ class SACAgent:
         q2_loss = self.q_criterion(q2_prediction, q_target.detach())
 
         # Update all networks
+        self.policy_optimizer.zero_grad()
+        policy_loss.backward()
+        self.policy_optimizer.step()
+
         self.q1_optimizer.zero_grad()
         q1_loss.backward()
         self.q1_optimizer.step()
@@ -203,10 +207,6 @@ class SACAgent:
         self.q2_optimizer.zero_grad()
         q2_loss.backward()
         self.q2_optimizer.step()
-
-        self.policy_optimizer.zero_grad()
-        policy_loss.backward()
-        self.policy_optimizer.step()
 
         update_target_network(
             q_model=self.q1, q_target=self.q1_target, tau=self.tau)
