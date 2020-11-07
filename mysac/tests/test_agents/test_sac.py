@@ -1,3 +1,5 @@
+# pylint: disable=no-member
+# pylint: disable=not-callable
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -50,7 +52,6 @@ class SACAgentTest(TestCase):
         """ Tests the interface for getting action """
         sac_agent = self.get_sac_agent()
 
-        actions = torch.ones(1, DEFAULT_ACTION_SIZE)
         observations = torch.ones(1, DEFAULT_OBS_SIZE)
 
         expected_mean, expected_std = self.policy_model(observations)
@@ -112,7 +113,7 @@ class SACAgentTest(TestCase):
             torch.tensor(
                 [p.sum() for p in sac_agent.policy.parameters()]
             ).sum().item(),
-            -2.8618388175964355,
+            -2.8618392944335938,
             'Test the backward for the policy model'
         )
 
@@ -120,7 +121,7 @@ class SACAgentTest(TestCase):
             torch.tensor(
                 [p.sum() for p in sac_agent.q1.parameters()]
             ).sum().item(),
-            0.3352656960487366,
+            0.3352656662464142,
             'Test the backward for the q1 model'
         )
 
@@ -136,7 +137,7 @@ class SACAgentTest(TestCase):
             torch.tensor(
                 [p.sum() for p in sac_agent.q2.parameters()]
             ).sum().item(),
-            0.3352656960487366,
+            0.3352656662464142,
             'Test the backward for the q2 model'
         )
 
