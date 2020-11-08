@@ -8,7 +8,8 @@ from os import mkdir, path, rmdir
 import numpy
 import torch
 
-from mysac.batch.numpy_batch import NumpySampledBufferForRNN
+from mysac.batch.numpy_batch import (NumpySampledBuffer,
+                                     NumpySampledBufferForRNN)
 from mysac.envs.pyrep_env import CartPoleEnv
 from mysac.evaluators.sac_evaluator import SACEvaluator
 from mysac.sac.sac import SACAgent
@@ -70,9 +71,11 @@ def run_experiment_from_specs(experiment_folder: str):
     # Select the model
     if specs['models']['mode'] == 'rnn':
         from mysac.models.rnn_models import PolicyModel, QModel
+        buffer = NumpySampledBufferForRNN(**specs['buffer'])
 
     else:
         from mysac.models.mlp import PolicyModel, QModel
+        buffer = NumpySampledBuffer(**specs['buffer'])
 
     policy = PolicyModel(**specs['models']['policy'])
     q1_model = QModel(**specs['models']['q_model'])
@@ -84,8 +87,6 @@ def run_experiment_from_specs(experiment_folder: str):
 
     if specs['env']['name'] == 'CartPole':
         env = CartPoleEnv(**specs['env']['specs'])
-
-    buffer = NumpySampledBufferForRNN(**specs['buffer'])
 
     agent = SACAgent(
         # Env

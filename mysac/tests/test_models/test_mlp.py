@@ -12,7 +12,7 @@ class QModelTest(TestCase):
     def test_forward_interface(self):
         """ Tests the foward interface for MLP Q Function """
         q = QModel(
-            obs_size=DEFAULT_OBS_SIZE,
+            num_inputs=DEFAULT_OBS_SIZE,
             num_actions=DEFAULT_ACTION_SIZE,
             hidden_sizes=DEFAULT_HIDDEN_SIZE
         )
@@ -35,7 +35,7 @@ class PolicyModelTest(TestCase):
     def test_forward_interface(self):
         """ Tests the foward interface for MLP Policy Function """
         pi = PolicyModel(
-            obs_size=DEFAULT_OBS_SIZE,
+            num_inputs=DEFAULT_OBS_SIZE,
             num_actions=DEFAULT_ACTION_SIZE,
             hidden_sizes=DEFAULT_HIDDEN_SIZE
         )
