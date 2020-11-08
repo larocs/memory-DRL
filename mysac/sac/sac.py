@@ -1,5 +1,6 @@
 # pylint: disable=no-member
-from typing import Tuple
+import csv
+from typing import Dict, Tuple
 
 import numpy as np
 import torch
@@ -137,7 +138,8 @@ class SACAgent:
 
         return tanh_action, action, log_prob
 
-    def train_from_samples(self, batch):
+    def train_from_samples(self, batch: Dict[str, np.array]) \
+            -> Dict[str, torch.tensor]:
         """ Makes a backward pass in a batch of transitions """
         rewards = batch['rewards']
         terminals = batch['terminals']
@@ -212,3 +214,9 @@ class SACAgent:
             q_model=self.q1, q_target=self.q1_target, tau=self.tau)
         update_target_network(
             q_model=self.q2, q_target=self.q2_target, tau=self.tau)
+
+        return {'policy_loss': policy_loss.detach(),
+                'q1_loss': q1_loss.detach(),
+                'q2_loss': q2_loss.detach(),
+                'log_prob': log_prob.detach(),
+                'alpha': alpha.detach()}

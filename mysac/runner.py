@@ -1,15 +1,16 @@
 import argparse
 import json
+import shutil
 import subprocess
 from datetime import datetime
 from os import mkdir, path, rmdir
-import shutil
 
 import numpy
 import torch
 
 from mysac.batch.numpy_batch import NumpySampledBufferForRNN
 from mysac.envs.pyrep_env import CartPoleEnv
+from mysac.evaluators.sac_evaluator import SACEvaluator
 from mysac.sac.sac import SACAgent
 from mysac.trainers.generic_train import generic_train
 
@@ -79,6 +80,8 @@ def run_experiment_from_specs(experiment_folder: str):
     q2_model = QModel(**specs['models']['q_model'])
     q2_target = QModel(**specs['models']['q_model'])
 
+    print('Policy:', policy)
+
     if specs['env']['name'] == 'CartPole':
         env = CartPoleEnv(**specs['env']['specs'])
 
@@ -104,6 +107,7 @@ def run_experiment_from_specs(experiment_folder: str):
         agent=agent,
         buffer=buffer,
         experiment_folder=experiment_folder,
+        evaluator=SACEvaluator(experiment_folder),
         **specs['trainer']
     )
 

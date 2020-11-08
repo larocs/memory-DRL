@@ -1,10 +1,12 @@
-from typing import Callable
+from typing import Callable, Dict, List
 
 import numpy as np
+import torch
 from gym import Env
 from mysac.samplers.sampler import BasicTrajectorySampler
 from tqdm import tqdm
-import torch
+
+from .utils import save_sac_models
 
 
 def generic_train(
@@ -15,7 +17,8 @@ def generic_train(
         batch_size: int = 256,
         max_steps_per_episode: int = 250,
         sampled_steps_per_epoch: int = 1000,
-        train_steps_per_epoch: int = 1000):
+        train_steps_per_epoch: int = 1000,
+        evaluator: Callable[[Dict[str, torch.tensor]], None] = None):
     """ Generic, infinite train loop with deterministic evaluation.
 
     Args:
@@ -56,7 +59,14 @@ def generic_train(
 
         for _ in tqdm(range(train_steps_per_epoch)):
             batch = buffer.sample(batch_size)
-            agent.train_from_samples(batch=batch)
 
-        torch.save(agent.policy.state_dict(),
-                   experiment_folder + '/models/policy.pt')
+            agent_info: Dict[str, torch.tensor] = agent \
+                .train_from_samples(batch=batch)
+
+            if evaluator:
+                evaluator.aggregate_values(**agent_info)
+
+        save_sac_models(agent=agent, experiment_folder=experiment_folder)
+
+        if evaluator:
+            evaluator.save_metrics()

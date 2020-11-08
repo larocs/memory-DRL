@@ -32,8 +32,7 @@ class QModel(nn.Module):
 
         self.layer1 = nn.Linear(obs_size + num_actions, hidden_sizes)
         self.layer2 = nn.Linear(hidden_sizes, hidden_sizes)
-        self.layer3 = nn.Linear(hidden_sizes, hidden_sizes)
-        self.layer4 = nn.Linear(hidden_sizes, 1)
+        self.layer3 = nn.Linear(hidden_sizes, 1)
 
         for layer in [self.layer1, self.layer2, self.layer4]:
             layer.bias.data.fill_(B_INIT_VALUE)
@@ -48,9 +47,8 @@ class QModel(nn.Module):
 
         x = activation(self.layer1(x))
         x = activation(self.layer2(x))
-        x = activation(self.layer3(x))
 
-        return self.layer4(x)
+        return self.layer3(x)
 
 
 class PolicyModel(nn.Module):
@@ -67,7 +65,6 @@ class PolicyModel(nn.Module):
 
         self.layer1 = nn.Linear(obs_size, hidden_sizes)
         self.layer2 = nn.Linear(hidden_sizes, hidden_sizes)
-        self.layer3 = nn.Linear(hidden_sizes, hidden_sizes)
 
         self.mean = nn.Linear(hidden_sizes, num_actions)
         self.log_std = nn.Linear(hidden_sizes, num_actions)
