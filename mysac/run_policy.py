@@ -8,6 +8,7 @@ import torch
 
 from mysac.envs.pyrep_env import CartPoleEnv
 from mysac.sac.sac import SACAgent
+from mysac.samplers.sampler import BasicTrajectorySampler
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run a trained policy from '
@@ -31,19 +32,40 @@ if __name__ == '__main__':
     else:
         from mysac.models.mlp import PolicyModel, QModel
 
-    policy = PolicyModel(**specs['models']['policy'])
-    policy.load_state_dict(torch.load(args.exp_path + '/models/policy.pt'))
+    policy = torch.load(args.exp_path + '/models/policy.pt')
     policy.eval()
 
     if specs['env']['name'] == 'CartPole':
         env_specs = specs['env']['specs']
-        env_specs['buffer_for_rnn'] = True
+
+        buffer_for_rnn = env_specs.get('buffer_for_rnn', None)
+        if buffer_for_rnn is None:
+            env_specs['buffer_for_rnn'] = False
+
         env_specs['headless'] = False
 
         env = CartPoleEnv(**env_specs)
 
-    obs = env.reset()
-    while True:
-        action, _ = policy(torch.tensor(obs))
+    agent = SACAgent(
+        env=env,
+        policy_model=policy,
+        q1_model=policy,
+        q1_target=policy,
+        q2_model=policy,
+        q2_target=policy,
 
-        obs, _, _, _ = env.step(action)
+        # Hyperparams
+        gamma=0,
+        policy_lr=0,
+        q_lr=0,
+        alpha_lr=0,
+        tau=0
+    )
+
+    BasicTrajectorySampler.sample_trajectory(
+        env=env,
+        agent=agent,
+        max_steps_per_episode=250,
+        total_steps=1e6,
+        deterministic=True
+    )
