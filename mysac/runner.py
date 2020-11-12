@@ -58,9 +58,6 @@ def run_experiment_from_specs(experiment_folder: str):
         'date': datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
     }
 
-    with open(experiment_folder + '/meta.json', 'w') as meta_file:
-        json.dump(meta, meta_file)
-
     with open(experiment_folder + '/specs.json', 'r') as specs_file:
         specs = json.load(specs_file)
 
@@ -103,14 +100,21 @@ def run_experiment_from_specs(experiment_folder: str):
         **specs['hyperparams']
     )
 
-    generic_train(
-        env=env,
-        agent=agent,
-        buffer=buffer,
-        experiment_folder=experiment_folder,
-        evaluator=SACEvaluator(experiment_folder),
-        **specs['trainer']
-    )
+    try:
+        generic_train(
+            env=env,
+            agent=agent,
+            buffer=buffer,
+            experiment_folder=experiment_folder,
+            evaluator=SACEvaluator(experiment_folder),
+            **specs['trainer']
+        )
+
+    except KeyboardInterrupt:
+        meta['end_date'] = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+
+        with open(experiment_folder + '/meta.json', 'w') as meta_file:
+            json.dump(meta, meta_file)
 
 
 if __name__ == '__main__':

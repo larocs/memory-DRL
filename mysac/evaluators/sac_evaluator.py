@@ -16,6 +16,8 @@ class SACEvaluator:
         experiment_path: the path to the experiment root folder
     """
 
+    FIELD_NAMES = ['log_prob', 'q1_loss', 'q2_loss', 'policy_loss', 'alpha']
+
     def __init__(self, experiment_path: str):
         self.log_probs: List[float] = []
         self.q1_losses: List[float] = []
@@ -27,11 +29,8 @@ class SACEvaluator:
         self.experiment_path = experiment_path
         self.stats_file_path = experiment_path + '/stats/sac_stats.csv'
 
-        self.field_names = ['log_prob', 'q1_loss', 'q2_loss', 'policy_loss',
-                            'alpha']
-
         with open(self.stats_file_path, 'a+', newline='') as stat_fp:
-            dict_writer = csv.DictWriter(stat_fp, fieldnames=self.field_names)
+            dict_writer = csv.DictWriter(stat_fp, fieldnames=self.FIELD_NAMES)
             dict_writer.writeheader()
 
     def aggregate_values(self, log_prob: torch.tensor, q1_loss: torch.tensor,
@@ -54,7 +53,7 @@ class SACEvaluator:
         Persists the metrics aggregated by `aggregate_values` into a csv file
         """
         with open(self.stats_file_path, 'a+', newline='') as stat_fp:
-            dict_writer = csv.DictWriter(stat_fp, fieldnames=self.field_names)
+            dict_writer = csv.DictWriter(stat_fp, fieldnames=self.FIELD_NAMES)
 
             rows = [{
                 'log_prob': self.log_probs[i],
