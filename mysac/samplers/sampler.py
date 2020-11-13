@@ -44,10 +44,11 @@ class BasicTrajectorySampler:
                     and steps < total_steps:
                 action, *_ = agent.get_action(
                     observations=torch.tensor(observation),
+                    deterministic=deterministic,
                     reparametrize=False
                 )
 
-                action = action.numpy()
+                action = action.detach().numpy()
 
                 next_observation, reward, done, _ = env.step(action)
 
