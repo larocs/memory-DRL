@@ -36,7 +36,8 @@ class CartPoleEnv(Env):
 
         self.pr = PyRep()
         self.pr.launch(
-            '/home/samuel/Develop/IC/cartpole2d_rnn/scenes/cart_pole_2d_up.ttt',
+            '/home/samuel/Develop/IC/my_own_sac/mysac/envs/coppelia_scenes/'
+            'cart_pole_2d_up.ttt',
             headless=headless)
         self.pr.start()
 
