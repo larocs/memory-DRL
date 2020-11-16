@@ -9,7 +9,8 @@ class BasicTrajectorySampler:
     @staticmethod
     def sample_trajectory(env: Env, agent, max_steps_per_episode: int,
                           total_steps: int,
-                          deterministic: bool = False) -> Dict[str, List[float]]:
+                          deterministic: bool = False,
+                          single_episode: bool = False) -> Dict[str, List[float]]:
         """ Sample a trajectory
 
         Args:
@@ -18,6 +19,8 @@ class BasicTrajectorySampler:
             max_steps_per_episode: the max number of steps per episode
             total_steps: the number of steps to be collected from the env
             deterministic: if True, use the best actions only
+            single_episode: if True, will sample untill max_steps or the first
+                env reset, whichever comes first
 
         Returns:
             5 lists of float values: observations, next observations, rewards,
@@ -44,11 +47,11 @@ class BasicTrajectorySampler:
                     and steps < total_steps:
                 action, *_ = agent.get_action(
                     observations=torch.tensor(observation),
-                    deterministic=deterministic,
-                    reparametrize=False
+                    reparametrize=False,
+                    deterministic=deterministic
                 )
 
-                action = action.detach().numpy()
+                action = action.detatch().numpy()
 
                 next_observation, reward, done, _ = env.step(action)
 
@@ -64,6 +67,9 @@ class BasicTrajectorySampler:
                 episode_steps += 1
 
             episodes += 1
+
+            if single_episode:
+                break
 
         return {
             'observations': np.array(observations),
