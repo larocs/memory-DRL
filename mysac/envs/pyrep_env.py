@@ -20,6 +20,11 @@ def min_max_norm(x, min, max):
 
 
 class CartPoleEnv(Env):
+    SCENES_FOLDER = ('/home/samuel/Develop/IC/my_own_sac/mysac/envs/'
+                     'coppelia_scenes/')
+
+    SCENE_FILE = 'cart_pole_2d_up.ttt'
+
     def __init__(self,
                  last_n_frames=50,
                  buffer_for_rnn=False,
@@ -35,10 +40,7 @@ class CartPoleEnv(Env):
         self.total_steps_under_height_limit = 0
 
         self.pr = PyRep()
-        self.pr.launch(
-            '/home/samuel/Develop/IC/my_own_sac/mysac/envs/coppelia_scenes/'
-            'cart_pole_2d_up.ttt',
-            headless=headless)
+        self.pr.launch(self.SCENES_FOLDER + self.SCENE_FILE, headless=headless)
         self.pr.start()
 
         self.slider = Joint(name_or_handle='slider')
