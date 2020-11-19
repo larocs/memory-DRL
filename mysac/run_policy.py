@@ -12,7 +12,8 @@ from mysac.samplers.sampler import BasicTrajectorySampler
 from gym import Env
 
 
-def env_from_specs(specs, headless: bool = True) -> Env:
+def env_from_specs(specs, env_class: Env = CartPoleEnv,
+                   headless: bool = True) -> Env:
     """
     Returns a CartPoleEnv from a specs json
 
@@ -30,7 +31,7 @@ def env_from_specs(specs, headless: bool = True) -> Env:
 
         env_specs['headless'] = headless
 
-        return CartPoleEnv(**env_specs)
+        return env_class(**env_specs)
 
 
 def policy_from_specs(specs, exp_path: str) -> torch.nn.Module:
