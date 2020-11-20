@@ -95,6 +95,8 @@ def test_actuation_signal(eval_folder: str, exp_path: str):
         plt.savefig(eval_folder + f'/{test}')
         plt.clf()
 
+    env.pr.shutdown()
+
 
 def test_perturbation(specs, eval_folder: str, exp_path: str):
     """
@@ -111,7 +113,6 @@ def test_perturbation(specs, eval_folder: str, exp_path: str):
     env, _, agent = build_everything_from_specs(
         specs,
         env_class=CartPolePerturbationEnv,
-        headless=False,
         exp_path=exp_path
     )
 
@@ -126,6 +127,7 @@ def test_perturbation(specs, eval_folder: str, exp_path: str):
         )
 
     env.save_eval(eval_folder=eval_folder)
+    env.pr.shutdown()
 
 
 if __name__ == '__main__':
