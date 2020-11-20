@@ -51,7 +51,7 @@ class BasicTrajectorySampler:
                     deterministic=deterministic
                 )
 
-                action = action.detatch().numpy()
+                action = action.detach().numpy()
 
                 next_observation, reward, done, _ = env.step(action)
 
