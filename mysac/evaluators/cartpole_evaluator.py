@@ -96,6 +96,38 @@ def test_actuation_signal(eval_folder: str, exp_path: str):
         plt.clf()
 
 
+def test_perturbation(specs, eval_folder: str, exp_path: str):
+    """
+    Applies perturbations to the pole mass everytime it gets stable (see
+    `CartPolePerturbationEnv` for details)
+
+    Args:
+        specs: the specs dict in the experiment folder
+        eval_folder: the folder where the evaluation results will be saved
+        exp_path: the path to the experiment folder
+    """
+    STEPS = 750
+
+    env, _, agent = build_everything_from_specs(
+        specs,
+        env_class=CartPolePerturbationEnv,
+        headless=False,
+        exp_path=exp_path
+    )
+
+    for _ in tqdm(range(REPEAT_TEST_N_TIMES), desc='Test '
+                  'perturbation'):
+        BasicTrajectorySampler.sample_trajectory(
+            env=env,
+            agent=agent,
+            max_steps_per_episode=STEPS,
+            total_steps=STEPS,
+            deterministic=True
+        )
+
+    env.save_eval(eval_folder=eval_folder)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Evaluates a trained policy '
                                      'in CartPoleEnv')
