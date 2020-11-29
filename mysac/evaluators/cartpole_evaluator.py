@@ -8,6 +8,7 @@ from typing import Dict, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 from mysac.envs.cartpole_perturb import CartPolePerturbationEnv
 from mysac.envs.pyrep_env import CartPoleEnv
@@ -66,6 +67,7 @@ def test_actuation_signal(eval_folder: str, exp_path: str):
         os.mkdir(eval_folder)
     except FileExistsError:
         print('Test actuation signal exsits, skipping...')
+        return
 
     for test in tqdm(range(REPEAT_TEST_N_TIMES),
                      desc='Testing actuation signal'):
@@ -108,7 +110,14 @@ def test_perturbation(specs, eval_folder: str, exp_path: str):
         eval_folder: the folder where the evaluation results will be saved
         exp_path: the path to the experiment folder
     """
-    STEPS = 750
+    STEPS = 1250
+
+    try:
+        eval_folder = eval_folder + '/test_perturbation/'
+        os.mkdir(eval_folder)
+    except FileExistsError:
+        print('Test perturbation exsits, skipping...')
+        return
 
     env, _, agent = build_everything_from_specs(
         specs,
@@ -129,6 +138,11 @@ def test_perturbation(specs, eval_folder: str, exp_path: str):
     env.save_eval(eval_folder=eval_folder)
     env.pr.shutdown()
 
+    df = pd.DataFrame({'recovery_steps': env.mass_state.recover_history})
+    print(df.describe())
+    df.plot.hist()
+    plt.savefig(eval_folder + '/recovery_steps')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Evaluates a trained policy '
@@ -148,8 +162,12 @@ if __name__ == '__main__':
     with open(experiment_folder + '/specs.json', 'r') as specs_file:
         specs = json.load(specs_file)
 
-    eval_folder = experiment_folder + '/stats/eval/'
-    os.mkdir(eval_folder)
+    try:
+        eval_folder = experiment_folder + '/stats/eval/'
+        os.mkdir(eval_folder)
+
+    except FileExistsError:
+        pass
 
     test_actuation_signal(eval_folder=eval_folder, exp_path=args.exp_path)
     test_perturbation(specs=specs, eval_folder=eval_folder,
