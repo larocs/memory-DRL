@@ -99,7 +99,7 @@ def test_actuation_signal(
         plt.title(f'Started from {mass_z_positions[0]}')
         plt.plot(range(n_points), mass_z_positions)
         plt.plot(range(n_points), n_points * [0.6])
-        plt.savefig(eval_folder + f'/{param_value}')
+        plt.savefig(eval_folder + f'/{param_value}.png')
         plt.clf()
 
     env.pr.shutdown()
@@ -167,6 +167,24 @@ def no_increase_callback(env: CartPoleEnv):
     return None
 
 
+def mass_increase_callback(env: CartPoleEnv):
+    """
+    Callback that increases cartpole mass
+
+    Args:
+        env: the CartPoleEnv whose params will be modified
+    """
+    mass = env.mass.get_mass()
+    if mass < 1.5:
+        new_mass = mass + 0.20
+
+        env.mass.set_mass(new_mass)
+
+        return '{:.2f}'.format(new_mass)
+
+    return None
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Evaluates a trained policy '
                                      'in CartPoleEnv')
@@ -196,6 +214,12 @@ if __name__ == '__main__':
         eval_folder=eval_folder,
         exp_path=args.exp_path,
         increase_difficulty_callback=no_increase_callback
+    )
+
+    test_actuation_signal(
+        eval_folder=eval_folder,
+        exp_path=args.exp_path,
+        increase_difficulty_callback=mass_increase_callback
     )
 
     test_perturbation(
