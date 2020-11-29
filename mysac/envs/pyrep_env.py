@@ -1,13 +1,14 @@
-from pyrep import PyRep
-from gym import Env, spaces
-
-from pyrep.objects.shape import Shape
-from pyrep.objects.joint import Joint
-from pyrep.backend.sim import simGetObjectVelocity
+import math
+from typing import List
 
 import numpy as np
-
-import math
+from gym import Env, spaces
+from pyrep import PyRep
+from pyrep.backend import sim
+from pyrep.backend.sim import (simGetJointMatrix, simGetObjectVelocity,
+                               simSetSphericalJointMatrix)
+from pyrep.objects.joint import Joint
+from pyrep.objects.shape import Shape
 
 
 def inverse_logit(x):
@@ -31,18 +32,21 @@ class CartPoleEnv(Env):
                  normalize_observation=False,
                  headless=False,
                  height_limit=-0.4,
-                 max_steps_under_height_limit=250):
+                 max_steps_under_height_limit=250,
+                 random_init: bool = True):
         self.total_steps = 0
         self.total_reward = 0
 
         self.height_limit = -0.4
         self.max_steps_under_height_limit = max_steps_under_height_limit
         self.total_steps_under_height_limit = 0
+        self.random_init = random_init
 
         self.pr = PyRep()
         self.pr.launch(self.SCENES_FOLDER + self.SCENE_FILE, headless=headless)
         self.pr.start()
 
+        self.bearing = Joint(name_or_handle='bearing')
         self.slider = Joint(name_or_handle='slider')
         self.slider2 = Joint(name_or_handle='slider2')
         self.cart = Shape(name_or_handle='cart')
@@ -68,14 +72,26 @@ class CartPoleEnv(Env):
             # Sequence len: 50, obs len: 10
             self.last_actions = np.zeros((last_n_frames, 10)).astype('float32')
 
-    def render(_):
+    def render(self, _):
         pass
+
+    def random_init_state(self):
+        if not self.random_init:
+            return
+
+        simSetSphericalJointMatrix(
+            self.bearing._handle,
+            np.random.uniform(-1, 1, 12).tolist()
+        )
+
+        self.slider.set_joint_position(np.random.uniform(-1, 1))
+        self.slider2.set_joint_position(np.random.uniform(-1, 1))
 
     def observe(self):
         cartpos = self.cart.get_position()
         masspos = self.mass.get_position()
-        cartvel, cart_angvel = simGetObjectVelocity(self.cart.get_handle())
-        massvel, mass_angvel = simGetObjectVelocity(self.mass.get_handle())
+        cartvel, _ = simGetObjectVelocity(self.cart.get_handle())
+        massvel, _ = simGetObjectVelocity(self.mass.get_handle())
 
         if not self.normalize_observation:
             obs = np.array([
@@ -109,8 +125,6 @@ class CartPoleEnv(Env):
     def step(self, action):
         self.total_steps += 1
 
-        done = False
-
         v, v1 = 2*action
 
         self.slider.set_joint_target_velocity(v)
@@ -127,8 +141,8 @@ class CartPoleEnv(Env):
         else:
             self.total_steps_under_height_limit = 0
 
-        if self.total_steps_under_height_limit >= self.max_steps_under_height_limit:
-            done = True
+        # if self.total_steps_under_height_limit >= self.max_steps_under_height_limit:
+        #     done = True
 
         self.episode_steps += 1
         self.total_reward += reward
@@ -146,6 +160,7 @@ class CartPoleEnv(Env):
             self.last_actions = np.zeros((self.last_n_frames, 10))
 
         self.pr.stop()
+        self.random_init_state()
         self.pr.start()
 
         return self.observe()

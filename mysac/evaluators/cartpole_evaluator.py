@@ -141,6 +141,10 @@ if __name__ == '__main__':
 
     experiment_folder = args.exp_path
 
+    # Fixes the random seeds
+    torch.manual_seed(0)
+    np.random.seed(0)
+
     with open(experiment_folder + '/specs.json', 'r') as specs_file:
         specs = json.load(specs_file)
 
