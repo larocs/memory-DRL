@@ -20,6 +20,14 @@ from tqdm import tqdm
 REPEAT_TEST_N_TIMES = 10
 
 
+def reset_random_seed():
+    """
+    Resets the RNG for Numpy and Torch
+    """
+    torch.manual_seed(0)
+    np.random.seed(0)
+
+
 def build_everything_from_specs(specs,
                                 exp_path: str,
                                 env_class: CartPoleEnv = CartPoleEnv,
@@ -65,9 +73,10 @@ def test_actuation_signal(
     agent = make_agent(policy=policy, env=env)
 
     try:
-        callback_name = increase_difficulty_callback.__name__
+        callback_name = increase_difficulty_callback.name
         eval_folder = eval_folder + f'/test_actuation_signal_{callback_name}/'
         os.mkdir(eval_folder)
+
     except FileExistsError:
         print('Test actuation signal exsits, skipping...')
         return
@@ -75,32 +84,35 @@ def test_actuation_signal(
     param_value = True
     while param_value is not None:
         param_value = increase_difficulty_callback(env=env)
+        os.mkdir(eval_folder + f'/{param_value}')
+        reset_random_seed()
 
-        info = BasicTrajectorySampler.sample_trajectory(
-            env=env,
-            agent=agent,
-            max_steps_per_episode=250,
-            total_steps=250,
-            deterministic=False
-        )
+        for test in range(REPEAT_TEST_N_TIMES):
+            info = BasicTrajectorySampler.sample_trajectory(
+                env=env,
+                agent=agent,
+                max_steps_per_episode=250,
+                total_steps=250,
+                deterministic=False
+            )
 
-        observations = info['observations']
+            observations = info['observations']
 
-        if env.buffer_for_rnn:
-            # Get the 6th position of the last frame of every observation
-            mass_z_positions = observations[:, -1, 6]
+            if env.buffer_for_rnn:
+                # Get the 6th position of the last frame of every observation
+                mass_z_positions = observations[:, -1, 6]
 
-        else:
-            mass_z_positions = observations[:, 6]
+            else:
+                mass_z_positions = observations[:, 6]
 
-        mass_z_positions = mass_z_positions[1:]
+            mass_z_positions = mass_z_positions[1:]
 
-        n_points = len(mass_z_positions)
-        plt.title(f'Started from {mass_z_positions[0]}')
-        plt.plot(range(n_points), mass_z_positions)
-        plt.plot(range(n_points), n_points * [0.6])
-        plt.savefig(eval_folder + f'/{param_value}.png')
-        plt.clf()
+            n_points = len(mass_z_positions)
+            plt.title(f'Started from {mass_z_positions[0]}')
+            plt.plot(range(n_points), mass_z_positions)
+            plt.plot(range(n_points), n_points * [0.6])
+            plt.savefig(eval_folder + f'/{param_value}/{test}.png')
+            plt.clf()
 
     env.pr.shutdown()
 
@@ -116,6 +128,8 @@ def test_perturbation(specs, eval_folder: str, exp_path: str):
         exp_path: the path to the experiment folder
     """
     STEPS = 1250
+
+    reset_random_seed()
 
     try:
         eval_folder = eval_folder + '/test_perturbation/'
@@ -149,40 +163,53 @@ def test_perturbation(specs, eval_folder: str, exp_path: str):
     plt.savefig(eval_folder + '/recovery_steps')
 
 
-def no_increase_callback(env: CartPoleEnv):
+class NoIncreaseCallback:
     """
     Callback that does not increase env difficulty
 
     Args:
         env: the CartPoleEnv whose params will be modified
     """
-    if not hasattr(env, 'repeats'):
-        env.repeats = 0
-        return 0
 
-    if env.repeats < REPEAT_TEST_N_TIMES:
-        env.repeats += 1
-        return env.repeats
+    def __init__(self):
+        self.name = self.__class__.__name__
 
-    return None
+    def __call__(self, env: CartPoleEnv):
+        if not hasattr(env, 'repeats'):
+            env.repeats = 0
+            return 0
+
+        if env.repeats < REPEAT_TEST_N_TIMES:
+            env.repeats += 1
+            return env.repeats
+
+        return None
 
 
-def mass_increase_callback(env: CartPoleEnv):
+class MassIncreaseCallback:
     """
     Callback that increases cartpole mass
 
     Args:
         env: the CartPoleEnv whose params will be modified
     """
-    mass = env.mass.get_mass()
-    if mass < 1.5:
-        new_mass = mass + 0.20
 
-        env.mass.set_mass(new_mass)
+    def __init__(self):
+        self.name = self.__class__.__name__
+        self.current_mass = None
 
-        return '{:.2f}'.format(new_mass)
+    def __call__(self, env: CartPoleEnv):
+        if self.current_mass is None:
+            self.current_mass = env.mass.get_mass()
 
-    return None
+        if self.current_mass > 1.5:
+            return None
+
+        self.current_mass += 0.20
+
+        env.mass.set_mass(self.current_mass)
+
+        return self.current_mass
 
 
 if __name__ == '__main__':
@@ -195,10 +222,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     experiment_folder = args.exp_path
-
-    # Fixes the random seeds
-    torch.manual_seed(0)
-    np.random.seed(0)
 
     with open(experiment_folder + '/specs.json', 'r') as specs_file:
         specs = json.load(specs_file)
@@ -213,13 +236,13 @@ if __name__ == '__main__':
     test_actuation_signal(
         eval_folder=eval_folder,
         exp_path=args.exp_path,
-        increase_difficulty_callback=no_increase_callback
+        increase_difficulty_callback=NoIncreaseCallback()
     )
 
     test_actuation_signal(
         eval_folder=eval_folder,
         exp_path=args.exp_path,
-        increase_difficulty_callback=mass_increase_callback
+        increase_difficulty_callback=MassIncreaseCallback()
     )
 
     test_perturbation(
