@@ -4,7 +4,7 @@ This module defines a suit of tests to evaluate agents on the CartPoleEnv
 import argparse
 import json
 import os
-from typing import Dict, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,7 +48,9 @@ def build_everything_from_specs(specs,
     return env, policy, agent
 
 
-def test_actuation_signal(eval_folder: str, exp_path: str):
+def test_actuation_signal(
+        eval_folder: str, exp_path: str,
+        increase_difficulty_callback: Callable[[CartPoleEnv], Optional[bool]]):
     """
     Tests the actuation signal based on the mass height
 
@@ -63,14 +65,17 @@ def test_actuation_signal(eval_folder: str, exp_path: str):
     agent = make_agent(policy=policy, env=env)
 
     try:
-        eval_folder = eval_folder + '/test_actuation_signal/'
+        callback_name = increase_difficulty_callback.__name__
+        eval_folder = eval_folder + f'/test_actuation_signal_{callback_name}/'
         os.mkdir(eval_folder)
     except FileExistsError:
         print('Test actuation signal exsits, skipping...')
         return
 
-    for test in tqdm(range(REPEAT_TEST_N_TIMES),
-                     desc='Testing actuation signal'):
+    param_value = True
+    while param_value is not None:
+        param_value = increase_difficulty_callback(env=env)
+
         info = BasicTrajectorySampler.sample_trajectory(
             env=env,
             agent=agent,
@@ -94,7 +99,7 @@ def test_actuation_signal(eval_folder: str, exp_path: str):
         plt.title(f'Started from {mass_z_positions[0]}')
         plt.plot(range(n_points), mass_z_positions)
         plt.plot(range(n_points), n_points * [0.6])
-        plt.savefig(eval_folder + f'/{test}')
+        plt.savefig(eval_folder + f'/{param_value}')
         plt.clf()
 
     env.pr.shutdown()
@@ -144,6 +149,24 @@ def test_perturbation(specs, eval_folder: str, exp_path: str):
     plt.savefig(eval_folder + '/recovery_steps')
 
 
+def no_increase_callback(env: CartPoleEnv):
+    """
+    Callback that does not increase env difficulty
+
+    Args:
+        env: the CartPoleEnv whose params will be modified
+    """
+    if not hasattr(env, 'repeats'):
+        env.repeats = 0
+        return 0
+
+    if env.repeats < REPEAT_TEST_N_TIMES:
+        env.repeats += 1
+        return env.repeats
+
+    return None
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Evaluates a trained policy '
                                      'in CartPoleEnv')
@@ -169,6 +192,14 @@ if __name__ == '__main__':
     except FileExistsError:
         pass
 
-    test_actuation_signal(eval_folder=eval_folder, exp_path=args.exp_path)
-    test_perturbation(specs=specs, eval_folder=eval_folder,
-                      exp_path=args.exp_path)
+    test_actuation_signal(
+        eval_folder=eval_folder,
+        exp_path=args.exp_path,
+        increase_difficulty_callback=no_increase_callback
+    )
+
+    test_perturbation(
+        specs=specs,
+        eval_folder=eval_folder,
+        exp_path=args.exp_path
+    )
