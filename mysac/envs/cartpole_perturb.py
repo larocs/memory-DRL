@@ -4,7 +4,7 @@ from mysac.envs.pyrep_env import CartPoleEnv
 from pyrep.objects.joint import Joint
 from pyrep.objects.shape import Shape
 
-MASS_STABLE_HEIGHT = 0.58
+MASS_STABLE_HEIGHT = 0.55
 MASS_STABLE_STEPS = 10
 
 
@@ -23,13 +23,19 @@ class MassState:
         mass: the mass shape in scene
     """
 
-    def __init__(self, mass: Shape):
+    def __init__(self, mass: Shape, perturbation_mass: Shape):
         self.stable_steps = 0
         self.is_recovering = True
         self.mass = mass
+        self.perturbation_masss = perturbation_mass
+
+        self.is_unstable = False
 
         self.recovering_steps = 0
         self.recover_history = []
+
+        self.unstable_steps = 0
+        self.unstable_history = []
 
     def reset(self):
         """
@@ -66,8 +72,19 @@ class MassState:
             self.recovering_steps += 1
 
         else:
+            if self.mass.check_collision(self.perturbation_masss) and \
+                    not self.is_unstable:
+                self.is_unstable = True
+
+            if self.is_unstable:
+                self.unstable_steps += 1
+
             if mass_z < MASS_STABLE_HEIGHT:
                 self.is_recovering = True
+
+                self.unstable_history.append(self.unstable_steps)
+                self.is_unstable = False
+                self.unstable_steps = 0
 
         return should_hit
 
@@ -139,7 +156,8 @@ class CartPolePerturbationEnv(CartPoleEnv):
         self.episode = 0
 
         self.mass_state = MassState(
-            mass=self.mass
+            mass=self.mass,
+            perturbation_mass=Shape(name_or_handle='perturbation_cuboid')
         )
 
         self.impact_slider_state = ImpactSliderState(
@@ -217,5 +235,9 @@ class CartPolePerturbationEnv(CartPoleEnv):
                 )
 
         with open(eval_folder + '/recovery_steps.csv', 'w') as csv_file:
+            for line in map(str, self.mass_state.recover_history):
+                csv_file.write(line + '\n')
+
+        with open(eval_folder + '/unstable_steps.csv', 'w') as csv_file:
             for line in map(str, self.mass_state.recover_history):
                 csv_file.write(line + '\n')

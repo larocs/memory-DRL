@@ -127,7 +127,7 @@ def test_perturbation(specs, eval_folder: str, exp_path: str):
         eval_folder: the folder where the evaluation results will be saved
         exp_path: the path to the experiment folder
     """
-    STEPS = 1250
+    STEPS = 750
 
     reset_random_seed()
 
@@ -144,7 +144,7 @@ def test_perturbation(specs, eval_folder: str, exp_path: str):
         exp_path=exp_path
     )
 
-    for _ in tqdm(range(REPEAT_TEST_N_TIMES), desc='Test '
+    for _ in tqdm(range(REPEAT_TEST_N_TIMES * 5), desc='Test '
                   'perturbation'):
         BasicTrajectorySampler.sample_trajectory(
             env=env,
@@ -158,9 +158,16 @@ def test_perturbation(specs, eval_folder: str, exp_path: str):
     env.pr.shutdown()
 
     df = pd.DataFrame({'recovery_steps': env.mass_state.recover_history})
+    print('Recovery steps')
     print(df.describe())
     df.plot.hist()
     plt.savefig(eval_folder + '/recovery_steps')
+
+    df = pd.DataFrame({'unstable_steps': env.mass_state.unstable_history})
+    print('Unstables steps')
+    print(df.describe())
+    df.plot.hist()
+    plt.savefig(eval_folder + '/unstable_steps')
 
 
 class NoIncreaseCallback:
