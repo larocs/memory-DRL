@@ -18,7 +18,8 @@ def generic_train(
         max_steps_per_episode: int = 250,
         sampled_steps_per_epoch: int = 1000,
         train_steps_per_epoch: int = 1000,
-        evaluator: Callable[[Dict[str, torch.tensor]], None] = None):
+        evaluator: Callable[[Dict[str, torch.tensor]], None] = None,
+        num_epochs: int = int(1e6)):
     """ Generic, infinite train loop with deterministic evaluation.
 
     Args:
@@ -32,8 +33,9 @@ def generic_train(
         sampled_steps_per_epoch: how many steps should be sampled at each
             epoch
         train_steps_per_epoch: how many backward passes per epoch
+        num_epochs: the number of epochs for training
     """
-    while True:
+    for _ in range(num_epochs):
         # Eval
         trajectory = BasicTrajectorySampler.sample_trajectory(
             env=env,
