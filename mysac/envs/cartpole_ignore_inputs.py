@@ -1,3 +1,4 @@
+from gym import spaces
 from typing import List
 
 import numpy as np
@@ -28,6 +29,14 @@ class CartPoleIgnoreStatesEnv(CartPoleEnv):
         self.observations_to_ignore = [
             OBSERVATIONS[obs_name] for obs_name in ignore_obs
         ]
+
+        num_obs = 10 - len(self.observations_to_ignore)
+
+        act = np.array([2.]*2)
+        self.action_space = spaces.Box(-act, act)
+
+        obs = np.inf * np.ones((num_obs,))
+        self.observation_space = spaces.Box(-obs, obs)
 
     def observe(self) -> np.array:
         """

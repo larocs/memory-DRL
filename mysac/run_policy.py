@@ -5,11 +5,11 @@ import argparse
 import json
 
 import torch
-
+from gym import Env
+from mysac.envs.cartpole_ignore_inputs import CartPoleIgnoreStatesEnv
 from mysac.envs.pyrep_env import CartPoleEnv
 from mysac.sac.sac import SACAgent
 from mysac.samplers.sampler import BasicTrajectorySampler
-from gym import Env
 
 
 def env_from_specs(specs, env_class: Env = CartPoleEnv,
@@ -22,16 +22,28 @@ def env_from_specs(specs, env_class: Env = CartPoleEnv,
         headless: overrides the headless option in the specs dict with this
             param value
     """
-    if specs['env']['name'] == 'CartPole':
-        env_specs = specs['env']['specs']
+    env_specs = specs['env']['specs']
 
-        buffer_for_rnn = env_specs.get('buffer_for_rnn', None)
-        if buffer_for_rnn is None:
-            env_specs['buffer_for_rnn'] = False
+    buffer_for_rnn = env_specs.get('buffer_for_rnn', None)
+    if buffer_for_rnn is None:
+        env_specs['buffer_for_rnn'] = False
 
-        env_specs['headless'] = headless
+    env_specs['headless'] = headless
 
-        return env_class(**env_specs)
+    return env_class(**env_specs)
+
+
+def get_env_class(env_name: str) -> Env:
+    """
+    Returns the correct Env class given a name
+    """
+    if env_name == 'CartPole':
+        return CartPoleEnv
+
+    if env_name == 'CartPoleIgnoreStatesEnv':
+        return CartPoleIgnoreStatesEnv
+
+    raise ValueError('The env required in specs is not recognized')
 
 
 def policy_from_specs(specs, exp_path: str) -> torch.nn.Module:
@@ -96,8 +108,9 @@ if __name__ == '__main__':
         specs = json.load(specs_file)
 
     print('Specs:', specs)
+    env_class = get_env_class(env_name=specs['env']['name'])
     policy = policy_from_specs(specs=specs, exp_path=args.exp_path)
-    env = env_from_specs(specs=specs, headless=False)
+    env = env_from_specs(specs=specs, headless=False, env_class=env_class)
     agent = make_agent(policy=policy, env=env)
 
     BasicTrajectorySampler.sample_trajectory(
