@@ -36,12 +36,11 @@ class BasicTrajectorySampler:
         # Count the total steps and episodes
         steps = 0
         episodes = 0
-        done = False
 
         while steps < total_steps:
             observation = env.reset()
-
             episode_steps = 0
+            done = False
 
             while not done and episode_steps < max_steps_per_episode \
                     and steps < total_steps:
