@@ -12,6 +12,7 @@ import torch
 from mysac.batch.numpy_batch import (NumpySampledBuffer,
                                      NumpySampledBufferForRNN)
 from mysac.envs.cartpole_ignore_inputs import CartPoleIgnoreStatesEnv
+from mysac.envs.nao import WalkingNao
 from mysac.envs.pyrep_env import CartPoleEnv
 from mysac.evaluators.sac_evaluator import SACEvaluator
 from mysac.sac.sac import SACAgent
@@ -89,6 +90,9 @@ def run_experiment_from_specs(experiment_folder: str):
 
     elif specs['env']['name'] == 'CartPoleIgnoreStatesEnv':
         env = CartPoleIgnoreStatesEnv(**specs['env']['specs'])
+
+    elif specs['env']['name'] == 'WalkingNao':
+        env = WalkingNao(**specs['env']['specs'])
 
     agent = SACAgent(
         # Env
