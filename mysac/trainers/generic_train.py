@@ -3,10 +3,35 @@ from typing import Callable, Dict, List
 import numpy as np
 import torch
 from gym import Env
+from mysac.sac.sac import SACAgent
 from mysac.samplers.sampler import BasicTrajectorySampler
 from tqdm import tqdm
 
 from .utils import save_sac_models
+
+EvalCallback = Callable[[SACAgent, Env], Dict[str, List[float]]]
+
+
+def default_eval_callback(
+    agent: SACAgent, env: Env, experiment_folder: str) \
+        -> Dict[str, List[float]]:
+    """
+    Default evaluation loop, implemented for backward compability
+
+    Args:
+        agent: a SAC agent
+        env: a Gym Environment
+
+    Returns:
+        A trajectory, as returned by BasicTrajectorySampler.sample_trajectory
+    """
+    return BasicTrajectorySampler.sample_trajectory(
+        env=env,
+        agent=agent,
+        max_steps_per_episode=500,
+        total_steps=500,
+        deterministic=True
+    )
 
 
 def generic_train(
@@ -19,7 +44,8 @@ def generic_train(
         sampled_steps_per_epoch: int = 1000,
         train_steps_per_epoch: int = 1000,
         evaluator: Callable[[Dict[str, torch.tensor]], None] = None,
-        num_epochs: int = int(1e6)):
+        num_epochs: int = int(1e6),
+        eval_callback: EvalCallback = default_eval_callback):
     """ Generic, infinite train loop with deterministic evaluation.
 
     Args:
@@ -37,12 +63,10 @@ def generic_train(
     """
     for _ in range(num_epochs):
         # Eval
-        trajectory = BasicTrajectorySampler.sample_trajectory(
-            env=env,
+        trajectory = eval_callback(
             agent=agent,
-            max_steps_per_episode=500,
-            total_steps=500,
-            deterministic=True
+            env=env,
+            experiment_folder=experiment_folder
         )
 
         print('Eval reward:', np.sum(trajectory['rewards'])/500)
