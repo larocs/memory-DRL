@@ -1,9 +1,11 @@
 import argparse
+import importlib
 import json
 import shutil
 import subprocess
 from datetime import datetime
 from os import mkdir, path, rmdir
+from typing import Dict
 
 import numpy
 import torch
@@ -110,6 +112,7 @@ def run_experiment_from_specs(experiment_folder: str):
             buffer=buffer,
             experiment_folder=experiment_folder,
             evaluator=SACEvaluator(experiment_folder),
+            **callback_loader(specs=specs),
             **specs['trainer']
         )
 
@@ -118,6 +121,40 @@ def run_experiment_from_specs(experiment_folder: str):
 
         with open(experiment_folder + '/meta.json', 'w') as meta_file:
             json.dump(meta, meta_file)
+
+
+def callback_loader(specs: Dict) -> Dict[str, callable]:
+    """
+    Load callbacks from the specs file
+
+    Args:
+        specs: json-like, representing a train spec file
+
+    Returns:
+        A dictionary mapping from callback names to callback functions
+    """
+    if 'callbacks' not in specs:
+        return {}
+
+    return {
+        name: import_function(function_path=path)
+        for name, path in specs['callbacks'].items()
+    }
+
+
+def import_function(function_path: str) -> callable:
+    """
+    Returns a function given its path
+
+    Args:
+        function_path: the path to the function
+    """
+    *module_path, function_name = function_path.split('.')
+    module_path = '.'.join(module_path)
+
+    module_path = importlib.import_module(name=''.join(module_path))
+
+    return getattr(module_path, function_name)
 
 
 if __name__ == '__main__':
