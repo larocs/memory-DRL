@@ -25,13 +25,17 @@ def default_eval_callback(
     Returns:
         A trajectory, as returned by BasicTrajectorySampler.sample_trajectory
     """
-    return BasicTrajectorySampler.sample_trajectory(
+    trajectory = BasicTrajectorySampler.sample_trajectory(
         env=env,
         agent=agent,
         max_steps_per_episode=500,
         total_steps=500,
         deterministic=True
     )
+
+    print('Eval reward:', np.sum(trajectory['rewards'])/500)
+    with open(experiment_folder + '/stats/eval_stats.csv', 'a') as stat_f:
+        stat_f.write(f'{np.sum(trajectory["rewards"])}\n')
 
 
 def generic_train(
@@ -63,15 +67,11 @@ def generic_train(
     """
     for _ in range(num_epochs):
         # Eval
-        trajectory = eval_callback(
+        eval_callback(
             agent=agent,
             env=env,
             experiment_folder=experiment_folder
         )
-
-        print('Eval reward:', np.sum(trajectory['rewards'])/500)
-        with open(experiment_folder + '/stats/eval_stats.csv', 'a') as stat_f:
-            stat_f.write(f'{np.sum(trajectory["rewards"])}\n')
 
         # Sample
         trajectory = BasicTrajectorySampler.sample_trajectory(
