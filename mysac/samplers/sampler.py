@@ -7,10 +7,12 @@ from gym import Env
 
 class BasicTrajectorySampler:
     @staticmethod
-    def sample_trajectory(env: Env, agent, max_steps_per_episode: int,
-                          total_steps: int,
-                          deterministic: bool = False,
-                          single_episode: bool = False) -> Dict[str, List[float]]:
+    def sample_trajectory(
+            env: Env, agent, max_steps_per_episode: int,
+            total_steps: int,
+            deterministic: bool = False,
+            single_episode: bool = False,
+            reset_kwargs: dict = None) -> Dict[str, List[float]]:
         """ Sample a trajectory
 
         Args:
@@ -21,6 +23,8 @@ class BasicTrajectorySampler:
             deterministic: if True, use the best actions only
             single_episode: if True, will sample untill max_steps or the first
                 env reset, whichever comes first
+            reset_kwargs: a dict of kwargs to be passed to the env.reset()
+                method
 
         Returns:
             5 lists of float values: observations, next observations, rewards,
@@ -37,8 +41,11 @@ class BasicTrajectorySampler:
         steps = 0
         episodes = 0
 
+        if not reset_kwargs:
+            reset_kwargs = {}
+
         while steps < total_steps:
-            observation = env.reset()
+            observation = env.reset(**reset_kwargs)
             episode_steps = 0
             done = False
 
