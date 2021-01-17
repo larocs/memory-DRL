@@ -211,7 +211,7 @@ class WalkingNao(NAO, Env):
         last_position = getattr(
             self,
             'last_position',
-            (-6.2544e-08, -1.1951e+01)
+            (-2.32, -1.19)
         )
 
         self.position_history.append(last_position)
@@ -249,7 +249,11 @@ class WalkingNao(NAO, Env):
             A tuple containing the current state, the reward signal, the done
             signal and an optional information string
         """
-        done = self.head.get_position()[-1] < 0.35
+        x, y, z = self.head.get_position()
+
+        done = z < 0.35
+        done |= 2.15 < y < -2.15
+        done |= -2.32 > x > 2.5
 
         action = vectorized_to_interval(
             limits=self.joint_limits,
