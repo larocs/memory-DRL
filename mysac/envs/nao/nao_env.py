@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 from gym import Env, spaces
@@ -22,7 +22,9 @@ NAO_JOINT_NAMES = [
     "ElbowRoll3"
 ]
 
-NAO_JOINT_LIMITS = [
+MAX_VELOCITY = 50e-3
+
+NAO_DEG_JOINT_LIMITS = [
     (-6.562e+01, 1.081e+02),
     (-2.174e+01, 6.607e+01),
     (-1.016e+02, 1.263e+02),
@@ -34,6 +36,15 @@ NAO_JOINT_LIMITS = [
     (-1.195e+02, 2.390e+02),
     (-8.850e+01, 8.650e+01)
 ]
+
+NAO_JOINT_LIMITS = [
+    (np.radians(limit), np.radians(joint_range))
+    for limit, joint_range in NAO_DEG_JOINT_LIMITS
+]
+
+NAO_JOINT_LIMIT_MAP = {
+    name: limits for name, limits in zip(NAO_JOINT_NAMES, NAO_JOINT_LIMITS)
+}
 
 FOOT_SENSOR_NAMES = [
     # Left foot
@@ -90,6 +101,8 @@ class NAO:
         self.head: Shape = None
         self.chest: Shape = None
 
+        self.total_steps = 0
+
         self.load_joints()
         self.load_shapes()
 
@@ -121,6 +134,7 @@ class NAO:
                 setattr(self, joint_full_name, joint)
 
                 self.joint_limits.append((limits[0], limits[1] + limits[0]))
+
                 self.all_joints.append(joint)
 
         self.joint_limits = np.array(self.joint_limits)
@@ -188,6 +202,8 @@ class WalkingNao(NAO, Env):
         if random_initialization:
             self.step(action=self.action_space.sample())
 
+        self.total_steps = 0
+
         return self.get_observation()
 
     def get_foot_sensor_signal(self) -> List[float]:
@@ -204,6 +220,45 @@ class WalkingNao(NAO, Env):
 
         return readings
 
+    def knees_at_limit(self) -> int:
+        """
+        Retuns the number of knees whose speed or position is at least at 99%
+        of its range
+        """
+        KNEE_JOINT_NAME = 'KneePitch3'
+
+        knees_at_limit = 0
+
+        position_min, position_range = NAO_JOINT_LIMIT_MAP[KNEE_JOINT_NAME]
+
+        for side in ['L', 'R']:
+            joint_name = side + KNEE_JOINT_NAME
+
+            joint: Joint = getattr(self, joint_name)
+
+            # Relative speed
+            joint_velocity_limit = joint.get_joint_upper_velocity_limit()
+            joint_velocity = joint.get_joint_velocity()
+            joint_relative_speed = joint_velocity/joint_velocity_limit
+
+            # Relative position
+            joint_position = joint.get_joint_position() - position_min
+            joint_relative_position = joint_position / position_range
+
+            if joint_relative_speed > 0.95:
+                print(f'{joint_name} is over 95% velocity:',
+                      joint.get_joint_velocity(),
+                      ', limit:',
+                      joint_velocity_limit)
+                knees_at_limit += 1
+
+            if joint_relative_position > 0.95:
+                print(f'{joint_name} is over 95% position:',
+                      joint.get_joint_position())
+                knees_at_limit += 1
+
+        return knees_at_limit
+
     def get_reward(self) -> float:
         """
         Returns the reward signal in the current simulation state
@@ -218,8 +273,8 @@ class WalkingNao(NAO, Env):
 
         x, y, _ = self.chest.get_position()
 
-        delta_x = x - last_position[0]
-        delta_y = y - last_position[1]
+        delta_x = np.clip(x - last_position[0], -MAX_VELOCITY, MAX_VELOCITY)
+        delta_y = np.clip(y - last_position[1], -MAX_VELOCITY, MAX_VELOCITY)
 
         delta_x *= 500 if delta_x > 0 else 1000
         delta_y = -250 * np.abs(delta_y)
@@ -249,6 +304,8 @@ class WalkingNao(NAO, Env):
             A tuple containing the current state, the reward signal, the done
             signal and an optional information string
         """
+        self.total_steps += 1
+
         x, y, z = self.head.get_position()
 
         done = z < 0.35
