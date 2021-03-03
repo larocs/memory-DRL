@@ -146,6 +146,14 @@ class NAO:
         self.head = Shape(name_or_handle='HeadPitch_link_respondable')
         self.chest = Shape(name_or_handle='imported_part_20_sub0')
 
+        self.l_foot = Shape(
+            name_or_handle='l_sole_link_pure3'
+        )
+
+        self.r_foot = Shape(
+            name_or_handle='r_sole_link_pure9'
+        )
+
 
 class WalkingNao(NAO, Env):
     """
@@ -289,9 +297,18 @@ class WalkingNao(NAO, Env):
         if z_orientation < -0.4 or z_orientation > 0.4:
             reward *= 0.8
 
+        if self.foots_collision():
+            reward *= 0.8
+
         self.last_position = (x, y)
 
         return reward
+
+    def foots_collision(self) -> bool:
+        """
+        Returns true if the NAO foot respondable parts collide
+        """
+        return self.l_foot.check_collision(self.r_foot)
 
     def step(self, action: np.array) -> Tuple[np.array, float, bool, str]:
         """

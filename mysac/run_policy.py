@@ -7,6 +7,7 @@ import json
 import torch
 from gym import Env
 from mysac.envs.cartpole_ignore_inputs import CartPoleIgnoreStatesEnv
+from mysac.envs.nao import WalkingNao
 from mysac.envs.pyrep_env import CartPoleEnv
 from mysac.sac.sac import SACAgent
 from mysac.samplers.sampler import BasicTrajectorySampler
@@ -42,6 +43,9 @@ def get_env_class(env_name: str) -> Env:
 
     if env_name == 'CartPoleIgnoreStatesEnv':
         return CartPoleIgnoreStatesEnv
+
+    if env_name == 'WalkingNao':
+        return WalkingNao
 
     raise ValueError('The env required in specs is not recognized')
 
