@@ -189,3 +189,5 @@ About
 # Stockenv related stuff
 src/
 data/
+
+.vscode
