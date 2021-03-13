@@ -84,8 +84,7 @@ class NAO:
     Args:
         headless: if True, will not display the CoppeliaSim interface
     """
-    SCENES_FOLDER = ('/home/samuel/Develop/IC/my_own_sac/mysac/envs/'
-                     'coppelia_scenes/')
+    SCENES_FOLDER = ('./mysac/envs/coppelia_scenes/')
 
     SCENE_FILE = 'nao_walk_original.ttt'
 
