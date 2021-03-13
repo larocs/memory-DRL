@@ -7,7 +7,7 @@ from mysac.sac.sac import SACAgent
 from mysac.samplers.sampler import BasicTrajectorySampler
 from tqdm import tqdm
 
-from .utils import save_sac_models
+from .utils import SaveSACModels
 
 EvalCallback = Callable[[SACAgent, Env], Dict[str, List[float]]]
 
@@ -33,9 +33,11 @@ def default_eval_callback(
         deterministic=True
     )
 
-    print('Eval reward:', np.sum(trajectory['rewards'])/500)
+    print('Eval reward:', np.sum(trajectory['rewards']))
     with open(experiment_folder + '/stats/eval_stats.csv', 'a') as stat_f:
         stat_f.write(f'{np.sum(trajectory["rewards"])}\n')
+    
+    return trajectory
 
 
 def generic_train(
@@ -67,7 +69,7 @@ def generic_train(
     """
     for _ in range(num_epochs):
         # Eval
-        eval_callback(
+        eval_trajectory = eval_callback(
             agent=agent,
             env=env,
             experiment_folder=experiment_folder
@@ -92,7 +94,11 @@ def generic_train(
             if evaluator:
                 evaluator.aggregate_values(**agent_info)
 
-        save_sac_models(agent=agent, experiment_folder=experiment_folder)
+        SaveSACModels.save_sac_models(
+            agent=agent,
+            experiment_folder=experiment_folder,
+            score=np.sum(eval_trajectory['rewards'])
+        )
 
         if evaluator:
             evaluator.save_metrics()
