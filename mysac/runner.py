@@ -4,15 +4,16 @@ import json
 import shutil
 import subprocess
 from datetime import datetime
-from os import mkdir, path, rmdir
+from os import mkdir, path
 from typing import Dict
 
 import numpy
 import torch
+
 from mysac.batch.numpy_batch import (NumpySampledBuffer,
                                      NumpySampledBufferForRNN)
 from mysac.envs.cartpole_ignore_inputs import CartPoleIgnoreStatesEnv
-from mysac.envs.nao import WalkingNao
+from mysac.envs.nao import RecurrentNAO, WalkingNao
 from mysac.envs.pyrep_env import CartPoleEnv
 from mysac.evaluators.sac_evaluator import SACEvaluator
 from mysac.sac.sac import SACAgent
@@ -85,14 +86,19 @@ def run_experiment_from_specs(experiment_folder: str):
 
     print('Policy:', policy)
 
-    if specs['env']['name'] == 'CartPole':
+    env_name = specs['env']['name']
+
+    if env_name == 'CartPole':
         env = CartPoleEnv(**specs['env']['specs'])
 
-    elif specs['env']['name'] == 'CartPoleIgnoreStatesEnv':
+    elif env_name == 'CartPoleIgnoreStatesEnv':
         env = CartPoleIgnoreStatesEnv(**specs['env']['specs'])
 
-    elif specs['env']['name'] == 'WalkingNao':
+    elif env_name == 'WalkingNao':
         env = WalkingNao(**specs['env']['specs'])
+    
+    elif env_name == 'RecurrentNAO':
+        env = RecurrentNAO(**specs['env']['specs'])
 
     agent = SACAgent(
         # Env

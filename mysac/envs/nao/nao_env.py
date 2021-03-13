@@ -1,8 +1,7 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 import numpy as np
 from gym import Env, spaces
-from mysac.samplers.sampler import BasicTrajectorySampler
 from pyrep import PyRep
 from pyrep.backend.sim import simGetObjectVelocity
 from pyrep.objects.force_sensor import ForceSensor
