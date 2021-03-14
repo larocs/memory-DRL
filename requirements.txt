@@ -1,0 +1,40 @@
+backcall==0.2.0
+certifi==2020.12.5
+cffi==1.14.2
+cloudpickle==1.6.0
+cycler==0.10.0
+decorator==4.4.2
+flake8 @ file:///tmp/build/80754af9/flake8_1601911421857/work
+future==0.18.2
+gym==0.18.0
+importlib-metadata @ file:///tmp/build/80754af9/importlib-metadata_1602276842396/work
+ipython==7.21.0
+ipython-genutils==0.2.0
+jedi==0.18.0
+kiwisolver==1.3.1
+matplotlib==3.3.4
+mccabe==0.6.1
+numpy==1.20.1
+parso==0.8.1
+pexpect==4.8.0
+pickleshare==0.7.5
+Pillow==7.2.0
+prompt-toolkit==3.0.16
+ptyprocess==0.7.0
+pycodestyle @ file:///home/ktietz/src/ci_mi/pycodestyle_1612807597675/work
+pycparser==2.20
+pyflakes @ file:///home/ktietz/src/ci_ipy2/pyflakes_1612551159640/work
+pyglet==1.5.0
+Pygments==2.8.0
+pyparsing==2.4.7
+-e git+https://github.com/stepjam/PyRep@603d283f02faf4c9874ddbd931bf7bafb3ea50ad#egg=PyRep
+python-dateutil==2.8.1
+-e git+git@github.com:samchenatti/sac_experiments.git@51e047885f10cb865a0df52ff594fd036e922eda#egg=sac_experiments
+scipy==1.6.1
+six==1.15.0
+torch==1.8.0
+tqdm==4.59.0
+traitlets==5.0.5
+typing-extensions==3.7.4.3
+wcwidth==0.2.5
+zipp @ file:///tmp/build/80754af9/zipp_1604001098328/work
