@@ -6,8 +6,9 @@ import json
 
 import torch
 from gym import Env
+
 from mysac.envs.cartpole_ignore_inputs import CartPoleIgnoreStatesEnv
-from mysac.envs.nao import WalkingNao
+from mysac.envs.nao import RecurrentNAO, WalkingNao
 from mysac.envs.pyrep_env import CartPoleEnv
 from mysac.sac.sac import SACAgent
 from mysac.samplers.sampler import BasicTrajectorySampler
@@ -46,8 +47,13 @@ def get_env_class(env_name: str) -> Env:
 
     if env_name == 'WalkingNao':
         return WalkingNao
+    
+    if env_name == 'RecurrentNAO':
+        return RecurrentNAO
 
-    raise ValueError('The env required in specs is not recognized')
+    raise ValueError(
+        'The env required in specs is not recognized: ' + env_name
+    )
 
 
 def policy_from_specs(specs, exp_path: str) -> torch.nn.Module:
