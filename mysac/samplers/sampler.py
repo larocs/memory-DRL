@@ -45,6 +45,7 @@ class BasicTrajectorySampler:
             reset_kwargs = {}
 
         while steps < total_steps:
+            episode_rewards = []
             observation = env.reset(**reset_kwargs)
             episode_steps = 0
             done = False
@@ -64,13 +65,20 @@ class BasicTrajectorySampler:
                 observations.append(observation)
                 next_observations.append(next_observation)
                 actions.append(action)
-                rewards.append(np.array([reward]))
+                episode_rewards.append(np.array([reward]))
                 terminals.append(np.array([int(done)]))
 
                 observation = next_observation
 
                 steps += 1
                 episode_steps += 1
+
+            if hasattr(env, 'post_episode_sampling_callback'):
+                episode_rewards = env.post_episode_sampling_callback(
+                    rewards=episode_rewards
+                )
+
+            rewards.extend(episode_rewards)
 
             episodes += 1
 

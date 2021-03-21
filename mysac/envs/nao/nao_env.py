@@ -59,6 +59,7 @@ FOOT_SENSOR_NAMES = [
     'NAO_RFsrRR',
 ]
 
+ENERGY_COST_THRESHOLD = 1.5
 
 def vectorized_to_interval(limits: np.array, actions: np.array) -> np.array:
     """
@@ -158,10 +159,14 @@ class WalkingNao(NAO, Env):
     Environment based on NAO Robot where the objective is to move forward
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, use_energy_cost: bool = False, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.position_history: List[Tuple[float, float]] = []
+        self.delayed_energy_cost = []
+        self.past_joint_velocities = []
+
+        self.use_delayed_energy_cost = True
 
     def get_observation(self) -> np.array:
         """
@@ -201,11 +206,14 @@ class WalkingNao(NAO, Env):
                 the action_space attribute
         """
         self.position_history = []
+        self.past_joint_velocities = []
+        self.delayed_energy_cost = []
+        self.random_initialization = random_initialization
 
         self.pr.stop()
         self.pr.start()
 
-        if random_initialization:
+        if self.random_initialization:
             self.step(action=self.action_space.sample())
 
         self.total_steps = 0
@@ -308,6 +316,26 @@ class WalkingNao(NAO, Env):
         """
         return self.l_foot.check_collision(self.r_foot)
 
+    def compute_delayed_energy_cost(self) -> float:
+        """
+        Returns the energy cost of the >last< action
+        """
+        if not self.past_joint_velocities:
+            return
+
+        # The current velocity is due to the last action
+        current_velocity = np.array(
+            [j.get_joint_velocity() for j in self.all_joints]
+        )
+
+        past_joint_velocities = np.array(
+            self.past_joint_velocities
+        )
+
+        cost = np.abs(current_velocity * past_joint_velocities).mean()
+
+        self.delayed_energy_cost.append(cost)
+
     def step(self, action: np.array) -> Tuple[np.array, float, bool, str]:
         """
         Executes an action in the environment
@@ -337,7 +365,42 @@ class WalkingNao(NAO, Env):
 
         self.pr.step()
 
+        self.compute_delayed_energy_cost()
+
+        # We use this for energy cost
+        self.past_joint_velocities = [
+            j.get_joint_velocity() for j in self.all_joints
+        ]
+
         return self.get_observation(), self.get_reward(), done, ''
+
+    def post_episode_sampling_callback(
+            self, rewards: List[np.array]) -> List[np.array]:
+        """
+        Called by the sampler if the reward must be calculated with a delayed
+        effect
+
+        Args:
+            rewards: the rewards originally collected for the episode
+        """
+        if not self.use_delayed_energy_cost:
+            return rewards
+
+        self.compute_delayed_energy_cost()
+
+        delayed_energy_cost = self.delayed_energy_cost
+        if self.random_initialization:
+            delayed_energy_cost = delayed_energy_cost[1:]
+
+        new_rewards = []
+        for reward, energy_cost in zip(rewards, self.delayed_energy_cost):
+            if energy_cost > ENERGY_COST_THRESHOLD:
+                new_rewards.append(0.8 * reward)
+
+            else:
+                new_rewards.append(reward)
+
+        return new_rewards
 
 
 if __name__ == '__main__':
