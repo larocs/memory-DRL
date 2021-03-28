@@ -1,3 +1,4 @@
+import time
 from typing import List, Tuple
 
 import numpy as np
@@ -59,7 +60,8 @@ FOOT_SENSOR_NAMES = [
     'NAO_RFsrRR',
 ]
 
-ENERGY_COST_THRESHOLD = 1.5
+ENERGY_COST_THRESHOLD = 1
+
 
 def vectorized_to_interval(limits: np.array, actions: np.array) -> np.array:
     """
@@ -332,7 +334,7 @@ class WalkingNao(NAO, Env):
             self.past_joint_velocities
         )
 
-        cost = np.abs(current_velocity * past_joint_velocities).mean()
+        cost = np.abs(current_velocity - past_joint_velocities).mean()
 
         self.delayed_energy_cost.append(cost)
 
