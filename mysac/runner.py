@@ -10,8 +10,7 @@ from typing import Dict
 import numpy
 import torch
 
-from mysac.batch.numpy_batch import (NumpySampledBuffer,
-                                     NumpySampledBufferForRNN)
+from mysac.batch.numpy_batch import NumpySampledBuffer, NumpySampledBufferForRNN
 from mysac.envs.cartpole_ignore_inputs import CartPoleIgnoreStatesEnv
 from mysac.envs.nao import RecurrentNAO, WalkingNao
 from mysac.envs.pyrep_env import CartPoleEnv
@@ -30,19 +29,19 @@ def create_folders(experiment_folder: str):
     Raises:
         FileExistsError: if the structure already exists
     """
-    if path.isdir(experiment_folder + '/models'):
-        confirmation = input('Experiment already exists! Override? [y/N]: ')
+    if path.isdir(experiment_folder + "/models"):
+        confirmation = input("Experiment already exists! Override? [y/N]: ")
 
-        if confirmation == 'n':
-            raise ValueError('Pick a different folder for the experiment '
-                             'artifacts')
+        if confirmation == "n":
+            raise ValueError(
+                "Pick a different folder for the experiment " "artifacts")
 
         else:
-            shutil.rmtree(experiment_folder + '/models/', ignore_errors=True)
-            shutil.rmtree(experiment_folder + '/stats/', ignore_errors=True)
+            shutil.rmtree(experiment_folder + "/models/", ignore_errors=True)
+            shutil.rmtree(experiment_folder + "/stats/", ignore_errors=True)
 
-    mkdir(experiment_folder + '/models/')
-    mkdir(experiment_folder + '/stats/')
+    mkdir(experiment_folder + "/models/")
+    mkdir(experiment_folder + "/stats/")
 
 
 def run_experiment_from_specs(experiment_folder: str):
@@ -55,65 +54,68 @@ def run_experiment_from_specs(experiment_folder: str):
     create_folders(experiment_folder)
 
     meta = {
-        'branch': subprocess.check_output(
-            ["git", "branch"]).decode(),
-        'commit': subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"]).decode(),
-        'date': datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+        "branch": subprocess.check_output(["git", "branch"]).decode(),
+        "commit": subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"]
+        ).decode(),
+        "date": datetime.now().strftime("%m/%d/%Y, %H:%M:%S"),
     }
 
-    with open(experiment_folder + '/specs.json', 'r') as specs_file:
+    with open(experiment_folder + "/specs.json", "r") as specs_file:
         specs = json.load(specs_file)
 
     # Fixes the random seeds
-    torch.manual_seed(specs['seed'])
-    numpy.random.seed(specs['seed'])
+    torch.manual_seed(specs["seed"])
+    numpy.random.seed(specs["seed"])
 
     # Select the model
-    if specs['models']['mode'] == 'rnn':
+    if specs["models"]["mode"] == "rnn":
         from mysac.models.rnn_models import PolicyModel, QModel
-        buffer = NumpySampledBufferForRNN(**specs['buffer'])
+
+        buffer = NumpySampledBufferForRNN(**specs["buffer"])
 
     else:
         from mysac.models.mlp import PolicyModel, QModel
-        buffer = NumpySampledBuffer(**specs['buffer'])
 
-    policy = PolicyModel(**specs['models']['policy'])
-    q1_model = QModel(**specs['models']['q_model'])
-    q1_target = QModel(**specs['models']['q_model'])
-    q2_model = QModel(**specs['models']['q_model'])
-    q2_target = QModel(**specs['models']['q_model'])
+        buffer = NumpySampledBuffer(**specs["buffer"])
 
-    print('Policy:', policy)
+    policy = PolicyModel(**specs["models"]["policy"])
+    q1_model = QModel(**specs["models"]["q_model"])
+    q1_target = QModel(**specs["models"]["q_model"])
+    q2_model = QModel(**specs["models"]["q_model"])
+    q2_target = QModel(**specs["models"]["q_model"])
 
-    env_name = specs['env']['name']
+    print("Policy:", policy)
 
-    if env_name == 'CartPole':
-        env = CartPoleEnv(**specs['env']['specs'])
+    env_name = specs["env"]["name"]
 
-    elif env_name == 'CartPoleIgnoreStatesEnv':
-        env = CartPoleIgnoreStatesEnv(**specs['env']['specs'])
+    if env_name == "CartPole":
+        env = CartPoleEnv(**specs["env"]["specs"])
 
-    elif env_name == 'WalkingNao':
-        env = WalkingNao(**specs['env']['specs'])
-    
-    elif env_name == 'RecurrentNAO':
-        env = RecurrentNAO(**specs['env']['specs'])
+    elif env_name == "CartPoleIgnoreStatesEnv":
+        env = CartPoleIgnoreStatesEnv(**specs["env"]["specs"])
+
+    elif env_name == "WalkingNao":
+        env = WalkingNao(**specs["env"]["specs"])
+
+    elif env_name == "RecurrentNAO":
+        env = RecurrentNAO(**specs["env"]["specs"])
 
     agent = SACAgent(
         # Env
         env=env,
-
         # Models
         policy_model=policy,
         q1_model=q1_model,
         q2_model=q2_model,
         q1_target=q1_target,
         q2_target=q2_target,
-
         # Hyperparams
-        **specs['hyperparams']
+        **specs["hyperparams"]
     )
+
+    with open(experiment_folder + "/meta.json", "w") as meta_file:
+        json.dump(meta, meta_file)
 
     try:
         generic_train(
@@ -123,13 +125,13 @@ def run_experiment_from_specs(experiment_folder: str):
             experiment_folder=experiment_folder,
             evaluator=SACEvaluator(experiment_folder),
             **callback_loader(specs=specs),
-            **specs['trainer']
+            **specs["trainer"]
         )
 
     except KeyboardInterrupt:
-        meta['end_date'] = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+        meta["end_date"] = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
 
-        with open(experiment_folder + '/meta.json', 'w') as meta_file:
+        with open(experiment_folder + "/meta.json", "w") as meta_file:
             json.dump(meta, meta_file)
 
 
@@ -143,12 +145,12 @@ def callback_loader(specs: Dict) -> Dict[str, callable]:
     Returns:
         A dictionary mapping from callback names to callback functions
     """
-    if 'callbacks' not in specs:
+    if "callbacks" not in specs:
         return {}
 
     return {
         name: import_function(function_path=path)
-        for name, path in specs['callbacks'].items()
+        for name, path in specs["callbacks"].items()
     }
 
 
@@ -159,22 +161,24 @@ def import_function(function_path: str) -> callable:
     Args:
         function_path: the path to the function
     """
-    *module_path, function_name = function_path.split('.')
-    module_path = '.'.join(module_path)
+    *module_path, function_name = function_path.split(".")
+    module_path = ".".join(module_path)
 
-    module_path = importlib.import_module(name=''.join(module_path))
+    module_path = importlib.import_module(name="".join(module_path))
 
     return getattr(module_path, function_name)
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Run SAC from specifications')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run SAC from specifications")
 
-    parser.add_argument('--exp_path', type=str,
-                        help='Output path for model binaries and stats')
-    parser.add_argument('--deterministic', action='store_true',
-                        help='Run the deterministic algorithm')
-    parser.add_argument('--viz', action='store_true')
+    parser.add_argument(
+        "--exp_path", type=str, help="Output path for model binaries and stats"
+    )
+    parser.add_argument(
+        "--deterministic", action="store_true", help="Run the deterministic algorithm"
+    )
+    parser.add_argument("--viz", action="store_true")
 
     args = parser.parse_args()
 
