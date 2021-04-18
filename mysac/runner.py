@@ -10,8 +10,10 @@ from typing import Dict
 import numpy
 import torch
 
-from mysac.batch.numpy_batch import NumpySampledBuffer, NumpySampledBufferForRNN
+from mysac.batch.numpy_batch import (NumpySampledBuffer,
+                                     NumpySampledBufferForRNN)
 from mysac.envs.cartpole_ignore_inputs import CartPoleIgnoreStatesEnv
+from mysac.envs.marta.marta import MartaWalkEnv
 from mysac.envs.nao import RecurrentNAO, WalkingNao
 from mysac.envs.pyrep_env import CartPoleEnv
 from mysac.evaluators.sac_evaluator import SACEvaluator
@@ -100,6 +102,9 @@ def run_experiment_from_specs(experiment_folder: str):
 
     elif env_name == "RecurrentNAO":
         env = RecurrentNAO(**specs["env"]["specs"])
+
+    elif env_name == 'MartaWalkEnv':
+        env = MartaWalkEnv(**specs["env"]["specs"])
 
     agent = SACAgent(
         # Env
