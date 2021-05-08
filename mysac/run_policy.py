@@ -8,6 +8,7 @@ import torch
 from gym import Env
 
 from mysac.envs.cartpole_ignore_inputs import CartPoleIgnoreStatesEnv
+from mysac.envs.marta.marta import MartaWalkEnv
 from mysac.envs.nao import RecurrentNAO, WalkingNao
 from mysac.envs.pyrep_env import CartPoleEnv
 from mysac.sac.sac import SACAgent
@@ -47,9 +48,12 @@ def get_env_class(env_name: str) -> Env:
 
     if env_name == 'WalkingNao':
         return WalkingNao
-    
+
     if env_name == 'RecurrentNAO':
         return RecurrentNAO
+
+    if env_name == 'MartaWalkEnv':
+        return MartaWalkEnv
 
     raise ValueError(
         'The env required in specs is not recognized: ' + env_name
