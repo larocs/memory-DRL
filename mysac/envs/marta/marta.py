@@ -9,8 +9,8 @@ from pyrep.objects.joint import Joint
 from pyrep.objects.shape import Shape
 from pyrep.robots.humanoids.marta_robot import MartaRobot
 
-MAX_VELOCITY = 50e-3
-ENERGY_COST_THRESHOLD = 1
+MAX_VELOCITY = 3 * 50e-3
+ENERGY_COST_THRESHOLD = 4
 
 
 class MartaWalkEnv:
@@ -26,7 +26,9 @@ class MartaWalkEnv:
             self,
             headless: bool = True,
             random_initialization: bool = True,
-            *args,
+            max_velocity: float = MAX_VELOCITY,
+            energy_cost_threshold: float = ENERGY_COST_THRESHOLD,
+            * args,
             **kwargs
     ):
         self.pr = PyRep()
@@ -56,6 +58,9 @@ class MartaWalkEnv:
             low=np.array(23 * [-1]),
             high=np.array(23 * [1]),
         )
+
+        self.max_velocity = max_velocity
+        self.energy_cost_threshold = energy_cost_threshold
 
     def load_shapes(self) -> None:
         """
@@ -129,8 +134,9 @@ class MartaWalkEnv:
         chest_handle = self.robot.shapes_handle[1]
         x, y, _ = sim.simGetObjectPosition(chest_handle, -1)
 
-        delta_x = np.clip(x - last_position[0], -MAX_VELOCITY, MAX_VELOCITY)
-        delta_y = np.clip(y - last_position[1], -MAX_VELOCITY, MAX_VELOCITY)
+        max_velocity = self.max_velocity
+        delta_x = np.clip(x - last_position[0], -max_velocity, max_velocity)
+        delta_y = np.clip(y - last_position[1], -max_velocity, max_velocity)
 
         delta_x *= 500 if delta_x > 0 else 1000
         delta_y = -250 * np.abs(delta_y)
@@ -260,7 +266,7 @@ class MartaWalkEnv:
 
         new_rewards = []
         for reward, energy_cost in zip(rewards, self.delayed_energy_cost):
-            if energy_cost > ENERGY_COST_THRESHOLD:
+            if energy_cost > self.energy_cost_threshold:
                 new_rewards.append(0.8 * reward)
 
             else:

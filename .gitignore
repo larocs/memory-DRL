@@ -34,6 +34,7 @@ Latest commit 14f8a8b on 11 Apr
 138 lines (112 sloc)  1.99 KB
  
 experiments/
+docker/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
