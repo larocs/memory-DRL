@@ -84,6 +84,7 @@ def policy_from_specs(specs, exp_path: str) -> torch.nn.Module:
 def make_agent(policy: torch.nn.Module, env: Env) -> SACAgent:
     """
     Returns a SACAgent instance to the given policy
+    The agent returned is not intended to be used during training!
 
     Args:
         policy: the policy network
