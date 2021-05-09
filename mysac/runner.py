@@ -19,6 +19,7 @@ from mysac.envs.pyrep_env import CartPoleEnv
 from mysac.evaluators.sac_evaluator import SACEvaluator
 from mysac.sac.sac import SACAgent
 from mysac.trainers.generic_train import generic_train
+from mysac.utils import get_device
 
 
 def create_folders(experiment_folder: str):
@@ -81,11 +82,12 @@ def run_experiment_from_specs(experiment_folder: str):
 
         buffer = NumpySampledBuffer(**specs["buffer"])
 
-    policy = PolicyModel(**specs["models"]["policy"])
-    q1_model = QModel(**specs["models"]["q_model"])
-    q1_target = QModel(**specs["models"]["q_model"])
-    q2_model = QModel(**specs["models"]["q_model"])
-    q2_target = QModel(**specs["models"]["q_model"])
+    device = get_device()
+    policy = PolicyModel(**specs["models"]["policy"]).to(device)
+    q1_model = QModel(**specs["models"]["q_model"]).to(device)
+    q1_target = QModel(**specs["models"]["q_model"]).to(device)
+    q2_model = QModel(**specs["models"]["q_model"]).to(device)
+    q2_target = QModel(**specs["models"]["q_model"]).to(device)
 
     print("Policy:", policy)
 

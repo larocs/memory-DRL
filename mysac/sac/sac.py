@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from gym import Env
 from mysac.sac.utils import update_target_network
+from mysac.utils import get_device
 from torch.distributions import Normal
 
 
@@ -31,6 +32,8 @@ class SACAgent:
 
                  # Metaparams
                  debug: bool = False):
+        self.device = get_device()
+
         self.env = env
 
         # Models
@@ -42,7 +45,7 @@ class SACAgent:
         self.q2 = q2_model
         self.q2_target = q2_target
 
-        self.log_alpha = torch.zeros(1, requires_grad=True)
+        self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
         self.target_entropy = -np.prod(self.env.action_space.shape).item()
 
         # Hyperparams
@@ -108,18 +111,19 @@ class SACAgent:
         mean, std = self.policy(observations)
 
         if deterministic:
-            return torch.tanh(mean), mean, None
+            return torch.tanh(mean).to(self.device), mean, None
 
         if not reparametrize:
-            sampled_action = Normal(mean, std).sample()
+            sampled_action = Normal(mean, std).sample().to(self.device)
 
         else:
             # If the action is not deterministic, use the reparametrization
             # trick
             noise = Normal(
                 torch.zeros(mean.size()),
-                torch.ones(std.size()))\
-                .sample()
+                torch.ones(std.size())) \
+                .sample() \
+                .to(self.device)
 
             sampled_action = mean + std * noise
 

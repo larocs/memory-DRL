@@ -1,8 +1,10 @@
 # pylint: disable=no-member
 # pylint: disable=not-callable
+from typing import List, Tuple
+
 import numpy as np
-from typing import Tuple, List
 import torch
+from mysac.utils import get_device
 
 
 class NumpySampledBuffer:
@@ -23,6 +25,8 @@ class NumpySampledBuffer:
 
         self.ix = 0
         self.size = size
+
+        self.device = get_device()
 
     @staticmethod
     def _roll_and_add(array: np.array, new_steps: np.array):
@@ -66,18 +70,42 @@ class NumpySampledBuffer:
         """ Sample n transitions from buffer """
         sampled_indexes = np.random.random_integers(0, self.ix - 1, n_samples)
 
-        observations = self.observations[sampled_indexes]
-        next_observations = self.next_observations[sampled_indexes]
-        rewards = self.rewards[sampled_indexes]
-        actions = self.actions[sampled_indexes]
-        terminals = self.terminals[sampled_indexes]
+        observations = torch.tensor(
+            self.observations[sampled_indexes],
+            dtype=torch.float,
+            device=self.device
+        )
+
+        next_observations = torch.tensor(
+            self.next_observations[sampled_indexes],
+            dtype=torch.float,
+            device=self.device
+        )
+
+        rewards = torch.tensor(
+            self.rewards[sampled_indexes],
+            dtype=torch.float,
+            device=self.device
+        )
+
+        actions = torch.tensor(
+            self.actions[sampled_indexes],
+            dtype=torch.float,
+            device=self.device
+        )
+
+        terminals = torch.tensor(
+            self.terminals[sampled_indexes],
+            dtype=torch.float,
+            device=self.device
+        )
 
         return {
-            'observations': torch.tensor(observations, dtype=torch.float),
-            'next_observations': torch.tensor(next_observations, dtype=torch.float),
-            'rewards': torch.tensor(rewards, dtype=torch.float),
-            'actions': torch.tensor(actions, dtype=torch.float),
-            'terminals': torch.tensor(terminals, dtype=torch.float)
+            'observations': observations,
+            'next_observations': next_observations,
+            'rewards': rewards,
+            'actions': actions,
+            'terminals': terminals
         }
 
 
@@ -101,3 +129,5 @@ class NumpySampledBufferForRNN(NumpySampledBuffer):
 
         self.ix = 0
         self.size = size
+
+        self.device = get_device()

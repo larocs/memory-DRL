@@ -40,11 +40,11 @@ class SACEvaluator:
         Receives lists of tensors containing information about the SAC backward
         steps and keeps it buffered until `save_metrics` is called.
         """
-        self.log_probs.append(log_prob.mean().numpy())
-        self.q1_losses.append(q1_loss.numpy())
-        self.q2_losses.append(q2_loss.numpy())
-        self.policy_losses.append(policy_loss.numpy())
-        self.alphas.append(alpha.numpy())
+        self.log_probs.append(log_prob.mean().cpu().numpy())
+        self.q1_losses.append(q1_loss.cpu().numpy())
+        self.q2_losses.append(q2_loss.cpu().numpy())
+        self.policy_losses.append(policy_loss.cpu().numpy())
+        self.alphas.append(alpha.cpu().numpy())
 
         self._calls += 1
 

@@ -3,6 +3,7 @@ from typing import Dict, List
 import numpy as np
 import torch
 from gym import Env
+from mysac.utils import get_device
 
 
 class BasicTrajectorySampler:
@@ -53,12 +54,13 @@ class BasicTrajectorySampler:
             while not done and episode_steps < max_steps_per_episode \
                     and steps < total_steps:
                 action, *_ = agent.get_action(
-                    observations=torch.tensor(observation),
+                    observations=torch.tensor(
+                        observation, device=get_device()),
                     reparametrize=False,
                     deterministic=deterministic
                 )
 
-                action = action.detach().numpy()
+                action = action.detach().cpu().numpy()
 
                 next_observation, reward, done, _ = env.step(action)
 
