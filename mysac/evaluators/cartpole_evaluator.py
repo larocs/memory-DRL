@@ -219,7 +219,11 @@ class MassIncreaseCallback:
         return self.current_mass
 
 
-if __name__ == '__main__':
+def read_args() -> Tuple[argparse.Namespace, str, dict]:
+    """
+    Read the args from the command line and returns it along with the
+    eval_folder path and the env specs
+    """
     parser = argparse.ArgumentParser(description='Evaluates a trained policy '
                                      'in CartPoleEnv')
 
@@ -239,6 +243,12 @@ if __name__ == '__main__':
 
     except FileExistsError:
         pass
+
+    return args, eval_folder, specs
+
+
+if __name__ == '__main__':
+    args, eval_folder, specs = read_args()
 
     test_actuation_signal(
         eval_folder=eval_folder,

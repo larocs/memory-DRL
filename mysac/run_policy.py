@@ -13,6 +13,7 @@ from mysac.envs.nao import RecurrentNAO, WalkingNao
 from mysac.envs.pyrep_env import CartPoleEnv
 from mysac.sac.sac import SACAgent
 from mysac.samplers.sampler import BasicTrajectorySampler
+from mysac.utils import get_device
 
 
 def env_from_specs(specs, env_class: Env = CartPoleEnv,
@@ -78,7 +79,7 @@ def policy_from_specs(specs, exp_path: str) -> torch.nn.Module:
     policy = torch.load(exp_path + '/models/policy.pt')
     policy.eval()
 
-    return policy
+    return policy.to(get_device())
 
 
 def make_agent(policy: torch.nn.Module, env: Env) -> SACAgent:
