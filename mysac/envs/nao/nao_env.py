@@ -90,10 +90,14 @@ class NAO:
 
     SCENE_FILE = 'nao_walk_original.ttt'
 
-    def __init__(self, headless: bool = True, *args, **kwargs):
+    def __init__(self, headless: bool = True,
+                 energy_cost_threshold: float = ENERGY_COST_THRESHOLD,
+                 *args, **kwargs):
+        print('Energy cost:', energy_cost_threshold)
         self.all_joints: List[Joint] = []
         self.foot_sensors: List[ForceSensor] = []
         self.joint_limits = []
+        self.energy_cost_threshold = energy_cost_threshold
 
         self.pr = PyRep()
         self.pr.launch(self.SCENES_FOLDER + self.SCENE_FILE, headless=headless)
@@ -396,7 +400,7 @@ class WalkingNao(NAO, Env):
 
         new_rewards = []
         for reward, energy_cost in zip(rewards, self.delayed_energy_cost):
-            if energy_cost > ENERGY_COST_THRESHOLD:
+            if energy_cost > self.energy_cost_threshold:
                 new_rewards.append(0.8 * reward)
 
             else:
