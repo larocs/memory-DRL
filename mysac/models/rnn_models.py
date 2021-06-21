@@ -1,4 +1,5 @@
 #pylint: disable=no-member
+import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -26,7 +27,7 @@ class QModel(nn.Module):
 
         self.layer1 = nn.Linear(hidden_size + num_actions, hidden_size)
         self.layer2 = nn.Linear(hidden_size, hidden_size)
-        self.layer3 = nn.Linear(hidden_size, hidden_size)
+        self.layer3 = nn.Linear(hidden_size, 1)
 
         for layer in [self.layer1, self.layer2, self.layer3]:
             layer.bias.data.fill_(B_INIT_VALUE)
@@ -44,9 +45,8 @@ class QModel(nn.Module):
         # Postprocess
         x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
-        x = self.layer3(x)
 
-        return x
+        return self.layer3(x)
 
 
 class PolicyModel(nn.Module):
