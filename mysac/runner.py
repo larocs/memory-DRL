@@ -77,10 +77,15 @@ def run_experiment_from_specs(experiment_folder: str):
 
         buffer = NumpySampledBufferForRNN(**specs["buffer"])
 
-    else:
+    elif specs["models"]["mode"] == "mlp":
         from mysac.models.mlp import PolicyModel, QModel
 
         buffer = NumpySampledBuffer(**specs["buffer"])
+
+    elif specs["models"]["mode"] == "attention":
+        from mysac.models.attention_model import PolicyModel, QModel
+
+        buffer = NumpySampledBufferForRNN(**specs["buffer"])
 
     device = get_device()
     policy = PolicyModel(**specs["models"]["policy"]).to(device)
