@@ -1,4 +1,6 @@
 #pylint: disable=no-member
+import time
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -21,34 +23,28 @@ class AttentionBase(nn.Module):
         self.recurrent_layer = nn.LSTM(
             num_inputs, hidden_size, batch_first=True)
 
-        self.attention_1 = nn.Linear(hidden_size, hidden_size)
-        self.attention_2 = nn.Linear(hidden_size, hidden_size)
+        self.attention = nn.Linear(hidden_size, hidden_size)
 
-        self.softmax = torch.nn.Softmax(dim=1)
-
-        self.flatten_1 = torch.nn.Linear(20 * hidden_size, 512)
-        self.flatten_2 = torch.nn.Linear(512, 256)
+        self.softmax = torch.nn.Softmax(dim=0)
 
     def forward(self, state: torch.tensor):
-        state, *_ = self.recurrent_layer(state)
+        _, (state, _) = self.recurrent_layer(state)
+        state = state.squeeze(0)
 
-        attention_mask = F.relu(self.attention_1(state))
-        attention_mask = self.softmax(self.attention_2(attention_mask))
+        attention_mask = self.softmax(self.attention(state))
 
-        state = state * attention_mask
-        state = torch.flatten(state, -2, -1)
-
-        state = F.relu(self.flatten_1(state))
-        state = F.relu(self.flatten_2(state))
-
-        return state
+        return state * attention_mask
 
 
 class QModel(AttentionBase):
-    def __init__(self, num_actions: int, **kwargs):
-        super().__init__(num_actions=num_actions, **kwargs)
+    def __init__(self, num_actions: int, hidden_size: int, **kwargs):
+        super().__init__(
+            num_actions=num_actions,
+            hidden_size=hidden_size,
+            **kwargs
+        )
 
-        self.merge = nn.Linear(256 + num_actions, 1)
+        self.merge = nn.Linear(hidden_size + num_actions, 1)
 
     def forward(self, state: torch.tensor, action: torch.tensor):
         state = super().forward(state=state)
@@ -57,18 +53,21 @@ class QModel(AttentionBase):
 
 
 class PolicyModel(AttentionBase):
-    def __init__(self,
-                 num_inputs: int,
-                 num_actions: int,
-                 hidden_size: int = 256):
+    def __init__(
+            self,
+            num_inputs: int,
+            num_actions: int,
+            hidden_size: int = 256
+    ):
+
         super().__init__(
             num_inputs=num_inputs,
             num_actions=num_actions,
             hidden_size=hidden_size
         )
 
-        self.mean_linear = nn.Linear(256, num_actions)
-        self.log_std_linear = nn.Linear(256, num_actions)
+        self.mean_linear = nn.Linear(hidden_size, num_actions)
+        self.log_std_linear = nn.Linear(hidden_size, num_actions)
 
     def forward(self, state: torch.tensor):
         if len(state.shape) == 2:
