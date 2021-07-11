@@ -8,9 +8,8 @@ from mysac.evaluators.cartpole_evaluator import read_args, reset_random_seed
 from mysac.run_policy import env_from_specs, make_agent, policy_from_specs
 from mysac.samplers.sampler import BasicTrajectorySampler
 from tqdm import tqdm
-from typing_extensions import final
 
-REPEAT_TEST_N_TIMES = 10
+REPEAT_TEST_N_TIMES = 200
 
 
 def evaluate_forward_walking(
@@ -47,6 +46,8 @@ def evaluate_forward_walking(
     total_steps = []
     start_x, start_y, _ = env.chest.get_position()
 
+    position_histories = []
+
     for _ in tqdm(range(REPEAT_TEST_N_TIMES)):
         results = BasicTrajectorySampler.sample_trajectory(
             env=env,
@@ -66,10 +67,23 @@ def evaluate_forward_walking(
             )
         )
 
+        position_histories.append(env.position_history[1:])
+
+    x_desloc = []
+    y_residual = []
+    for position_history in position_histories:
+        positions = np.array(position_history)
+
+        y_residual.append(np.abs(positions[:, 1] - -1.1950e+01).sum())
+
+        x_desloc.append(np.abs(positions[0, 0] - positions[-1, 0]))
+
     df = pd.DataFrame(
         {
             'deslocation': deslocations,
-            'steps': total_steps
+            'steps': total_steps,
+            'y_residual': y_residual,
+            'x_desloc': x_desloc
         }
     )
 
@@ -80,6 +94,40 @@ def evaluate_forward_walking(
     plt.title('Delayed Energy Cost for the last test')
     plt.plot(env.delayed_energy_cost)
     plt.savefig(eval_folder + 'delayed_energy_cost.png')
+
+    plt.clf()
+    plt.title('Estatisticas de deslocamento')
+    plt.plot(
+        df['y_residual'],
+        label='Soma dos residuos de Y por episódio',
+        marker='o'
+    )
+    plt.plot(
+        df['x_desloc'],
+        label='Deslocamento em x',
+        marker='o'
+    )
+    plt.xlabel('Episódio')
+    plt.savefig(eval_folder + 'desloc_stats.png')
+
+    for i, position_history in enumerate(position_histories):
+        position_history = np.array(position_history)
+        x, y = position_history[:, 0], position_history[:, 1]
+
+        plt.clf()
+        plt.title(f'Run {i}')
+        plt.quiver(
+            x[:-1], y[:-1],
+            x[1:]-x[:-1], y[1:]-y[:-1],
+            scale_units='xy',
+            angles='xy',
+            scale=1
+        )
+
+        plt.xlabel('Posição em X')
+        plt.ylabel('Posição em Y')
+
+        plt.savefig(eval_folder + f'run_{i}.png')
 
     env.pr.shutdown()
 
