@@ -25,7 +25,7 @@ class AttentionBase(nn.Module):
 
         self.attention = nn.Linear(hidden_size, hidden_size)
 
-        self.softmax = torch.nn.Softmax(dim=0)
+        self.softmax = torch.nn.Softmax(dim=1)
 
     def forward(self, state: torch.tensor):
         _, (state, _) = self.recurrent_layer(state)
