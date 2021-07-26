@@ -3,6 +3,9 @@ import time
 
 import torch
 import torch.nn.functional as F
+from mysac.models.mlp import PolicyModel as MLPPolicyModel
+from mysac.models.mlp import QModel as MLPQModel
+from numpy import intp
 from torch import nn
 
 # Numerical stability
@@ -35,14 +38,12 @@ class AttentionBase(nn.Module):
 
         else:
             self.attention = nn.Sequential(
-                nn.Linear(num_inputs, num_inputs),
-                nn.Softmax(dim=1)
-            )
-
-            self.dense = nn.Sequential(
-                nn.Linear(num_inputs, num_inputs),
+                nn.Linear(num_inputs, 2 * num_inputs),
                 nn.ReLU(),
-                nn.Linear(num_inputs, num_inputs),
+                nn.Linear(2 * num_inputs, 2 * num_inputs),
+                nn.ReLU(),
+                nn.Linear(2 * num_inputs, num_inputs),
+                nn.Softmax(dim=1)
             )
 
     def _forward_lstm(self, state: torch.tensor) -> torch.tensor:
@@ -59,59 +60,60 @@ class AttentionBase(nn.Module):
 
         else:
             attention_mask = self.attention(state)
-            state = self.dense(state)
+            state = state * attention_mask
 
             state = self._forward_lstm(state)
 
         return state
 
 
-class QModel(AttentionBase):
-    def __init__(self, num_actions: int, hidden_size: int, **kwargs):
-        super().__init__(
-            num_actions=num_actions,
-            hidden_size=hidden_size,
-            **kwargs
-        )
+class QModel(nn.Module):
+    def __init__(
+        self, hidden_size: int, post_attention: bool = False, **kwargs
+    ):
+        super(QModel, self).__init__()
 
-        self.merge = nn.Linear(hidden_size + num_actions, 1)
+        self.attention_base = AttentionBase(
+            post_attention=post_attention, **kwargs)
+
+        del kwargs['num_inputs']
+
+        self.mlp_q = MLPQModel(
+            num_inputs=256, hidden_sizes=hidden_size, **kwargs)
+
+        print('Q Model:', self)
 
     def forward(self, state: torch.tensor, action: torch.tensor):
-        state = super().forward(state=state)
+        state = self.attention_base.forward(state=state)
 
-        return self.merge(torch.cat([state, action], dim=-1))
+        return self.mlp_q.forward(observations=state, actions=action)
 
 
-class PolicyModel(AttentionBase):
+class PolicyModel(nn.Module):
     def __init__(
-            self,
-            num_inputs: int,
-            num_actions: int,
-            hidden_size: int = 256,
-            **kwargs
+        self,
+        *args,
+        hidden_size: int,
+        num_inputs: int,
+        post_attention: bool = False,
+        **kwargs
     ):
+        super(PolicyModel, self).__init__()
 
-        super().__init__(
-            num_inputs=num_inputs,
-            num_actions=num_actions,
-            hidden_size=hidden_size,
-            **kwargs
-        )
+        self.attention_base = AttentionBase(
+            *args, post_attention=post_attention, num_inputs=num_inputs,
+            **kwargs)
 
-        self.mean_linear = nn.Linear(hidden_size, num_actions)
-        self.log_std_linear = nn.Linear(hidden_size, num_actions)
+        self.mlp_policy = MLPPolicyModel(
+            *args, hidden_sizes=512, num_inputs=256, **kwargs)
 
     def forward(self, state: torch.tensor):
         if len(state.shape) == 2:
             state = state.unsqueeze(0)
 
-        state = super().forward(state=state)
+        state = self.attention_base.forward(state=state)
 
-        mean = self.mean_linear(state)
-        log_std = self.log_std_linear(state)
-        std = log_std.exp()
-
-        std = torch.clamp(std, LOG_SIG_MIN, LOG_SIG_MAX)
+        mean, std = self.mlp_policy.forward(observations=state)
 
         if mean.shape[0] == 1:
             mean = mean.squeeze(0)
