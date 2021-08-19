@@ -19,8 +19,8 @@ W_INIT_VALUE = 3e-3
 
 class AttentionBase(nn.Module):
     def __init__(
-        self, num_inputs: int, num_actions: int, hidden_size: int = 256,
-        post_attention: bool = True
+        self, num_inputs: int, num_actions: int, num_frames: int = 20,
+        hidden_size: int = 256, post_attention: bool = True
     ):
         super(AttentionBase, self).__init__()
         print('Attention model; post_attention:', post_attention)
@@ -28,7 +28,9 @@ class AttentionBase(nn.Module):
         self.post_attention = post_attention
 
         self.recurrent_layer = nn.LSTM(
-            num_inputs, hidden_size, batch_first=True)
+            num_inputs * 2, hidden_size, batch_first=True)
+
+        self.linear_dim = num_inputs * num_frames
 
         if self.post_attention:
             self.attention = nn.Sequential(
@@ -38,11 +40,11 @@ class AttentionBase(nn.Module):
 
         else:
             self.attention = nn.Sequential(
-                nn.Linear(num_inputs, 2 * num_inputs),
+                nn.Linear(self.linear_dim, 1024),
                 nn.ReLU(),
-                nn.Linear(2 * num_inputs, 2 * num_inputs),
+                nn.Linear(1024, 1024),
                 nn.ReLU(),
-                nn.Linear(2 * num_inputs, num_inputs),
+                nn.Linear(1024, self.linear_dim),
                 nn.Softmax(dim=1)
             )
 
@@ -59,8 +61,18 @@ class AttentionBase(nn.Module):
             state = state * attention_mask
 
         else:
+            n_batches, n_frames, n_features = state.shape
+
+            state = state.reshape(n_batches, n_frames * n_features)
+
             attention_mask = self.attention(state)
             state = state * attention_mask
+
+            state = state.reshape(n_batches, n_frames, n_features)
+            attention_mask = attention_mask.reshape(
+                n_batches, n_frames, n_features)
+
+            state = torch.cat(tensors=(state, attention_mask), dim=2)
 
             state = self._forward_lstm(state)
 
