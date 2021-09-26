@@ -19,64 +19,66 @@ W_INIT_VALUE = 3e-3
 
 class AttentionBase(nn.Module):
     def __init__(
-        self, num_inputs: int, num_actions: int, num_frames: int = 20,
-        hidden_size: int = 256, post_attention: bool = True
+        self, num_inputs: int, num_actions: int, hidden_size: int = 256,
+        post_attention: bool = True
     ):
         super(AttentionBase, self).__init__()
-        print('Attention model; post_attention:', post_attention)
 
-        self.post_attention = post_attention
+        self.query = nn.Linear(in_features=num_inputs + 1, out_features=16)
 
-        self.recurrent_layer = nn.LSTM(
-            num_inputs * 2, hidden_size, batch_first=True)
+        self.key = nn.Linear(in_features=num_inputs + 1, out_features=16)
 
-        self.linear_dim = num_inputs * num_frames
+        self.value = nn.Linear(in_features=num_inputs + 1, out_features=16)
 
-        if self.post_attention:
-            self.attention = nn.Sequential(
-                nn.Linear(hidden_size, hidden_size),
-                nn.Softmax(dim=1)
+        for model_name in ['query', 'key', 'value']:
+            setattr(
+                self,
+                model_name,
+                nn.Sequential(
+                    nn.Linear(in_features=num_inputs + 1, out_features=16),
+                    nn.ReLU(),
+                    nn.Linear(in_features=16, out_features=32),
+                    nn.ReLU(),
+                    nn.Linear(in_features=32, out_features=64),
+                    nn.ReLU(),
+                    nn.Linear(in_features=64, out_features=128),
+                    nn.ReLU(),
+                    nn.Linear(in_features=128, out_features=256),
+
+                )
             )
 
-        else:
-            self.attention = nn.Sequential(
-                nn.Linear(self.linear_dim, 1024),
-                nn.ReLU(),
-                nn.Linear(1024, 1024),
-                nn.ReLU(),
-                nn.Linear(1024, self.linear_dim),
-                nn.Softmax(dim=1)
-            )
+        self.multi_head_attention = nn.MultiheadAttention(
+            embed_dim=256,
+            num_heads=128,
+            batch_first=True
+        )
 
-    def _forward_lstm(self, state: torch.tensor) -> torch.tensor:
-        _, (state, _) = self.recurrent_layer(state)
-
-        return state.squeeze(0)
+        self.lstm = nn.RNN(
+            input_size=256,
+            hidden_size=256,
+            batch_first=True
+        )
 
     def forward(self, state: torch.tensor) -> torch.tensor:
-        if self.post_attention:
-            state = self._forward_lstm(state)
-            attention_mask = self.attention(state)
+        batch_size = state.shape[0]
 
-            state = state * attention_mask
+        position_enconding = torch.arange(20).to('cuda:0')/20
+        position_enconding = position_enconding.repeat(batch_size)
+        position_enconding = position_enconding.reshape(batch_size, 20, 1)
 
-        else:
-            n_batches, n_frames, n_features = state.shape
+        state = torch.cat([state, position_enconding], dim=-1)
 
-            state = state.reshape(n_batches, n_frames * n_features)
+        Q = self.query(state)
+        K = self.key(state)
+        V = self.value(state)
 
-            attention_mask = self.attention(state)
-            state = state * attention_mask
+        context, _ = self.multi_head_attention(query=Q, key=K, value=V)
 
-            state = state.reshape(n_batches, n_frames, n_features)
-            attention_mask = attention_mask.reshape(
-                n_batches, n_frames, n_features)
+        # _, (context, _) = self.lstm(context)
+        _, context = self.lstm(context)
 
-            state = torch.cat(tensors=(state, attention_mask), dim=2)
-
-            state = self._forward_lstm(state)
-
-        return state
+        return context.squeeze(0)
 
 
 class QModel(nn.Module):
@@ -91,7 +93,7 @@ class QModel(nn.Module):
         del kwargs['num_inputs']
 
         self.mlp_q = MLPQModel(
-            num_inputs=256, hidden_sizes=hidden_size, **kwargs)
+            num_inputs=256, hidden_sizes=512, **kwargs)
 
         print('Q Model:', self)
 
