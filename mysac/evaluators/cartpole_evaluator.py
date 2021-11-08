@@ -4,7 +4,8 @@ This module defines a suit of tests to evaluate agents on the CartPoleEnv
 import argparse
 import json
 import os
-from typing import Callable, Dict, Optional, Tuple
+from sys import path
+from typing import Callable, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -170,6 +171,56 @@ def test_perturbation(specs, eval_folder: str, exp_path: str):
     plt.savefig(eval_folder + '/unstable_steps')
 
 
+def test_noisy_observation(specs, eval_folder: str, exp_path: str):
+    """
+    Applies random noise to the observations
+
+    Args:
+        specs: the specs dict in the experiment folder
+        eval_folder: the folder where the evaluation results will be saved
+        exp_path: the path to the experiment folder
+    """
+    STEPS = 750
+
+    reset_random_seed()
+
+    try:
+        eval_folder = eval_folder + '/test_noisy_observation/'
+        os.mkdir(eval_folder)
+
+    except FileExistsError:
+        print('Test noisy_observation exists, skipping...')
+        return
+
+    specs['env']['specs']['pomdp_mode'] = 'noise'
+
+    env, _, agent = build_everything_from_specs(
+        specs,
+        env_class=CartPolePerturbationEnv,
+        exp_path=exp_path
+    )
+
+    def post_episode_sampling_callback(rewards: List[int]):
+        df = pd.DataFrame(env.mass_position_history)
+        df.to_csv(eval_folder + 'data.csv', mode='a')
+
+        return rewards
+
+    env.post_episode_sampling_callback = post_episode_sampling_callback
+
+    for _ in tqdm(range(200), desc='Test random noise'):
+        BasicTrajectorySampler.sample_trajectory(
+            env=env,
+            agent=agent,
+            max_steps_per_episode=STEPS,
+            total_steps=STEPS,
+            deterministic=True,
+            single_episode=True
+        )
+
+    env.pr.shutdown()
+
+
 class NoIncreaseCallback:
     """
     Callback that does not increase env difficulty
@@ -250,19 +301,25 @@ def read_args() -> Tuple[argparse.Namespace, str, dict]:
 if __name__ == '__main__':
     args, eval_folder, specs = read_args()
 
-    test_actuation_signal(
-        eval_folder=eval_folder,
-        exp_path=args.exp_path,
-        increase_difficulty_callback=NoIncreaseCallback()
-    )
+    # test_actuation_signal(
+    #     eval_folder=eval_folder,
+    #     exp_path=args.exp_path,
+    #     increase_difficulty_callback=NoIncreaseCallback()
+    # )
 
-    test_actuation_signal(
-        eval_folder=eval_folder,
-        exp_path=args.exp_path,
-        increase_difficulty_callback=MassIncreaseCallback()
-    )
+    # test_actuation_signal(
+    #     eval_folder=eval_folder,
+    #     exp_path=args.exp_path,
+    #     increase_difficulty_callback=MassIncreaseCallback()
+    # )
 
-    test_perturbation(
+    # test_perturbation(
+    #     specs=specs,
+    #     eval_folder=eval_folder,
+    #     exp_path=args.exp_path
+    # )
+
+    test_noisy_observation(
         specs=specs,
         eval_folder=eval_folder,
         exp_path=args.exp_path

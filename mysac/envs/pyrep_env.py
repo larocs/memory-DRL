@@ -21,8 +21,8 @@ def min_max_norm(x, min, max):
 
 
 class CartPoleEnv(Env):
-    SCENES_FOLDER = ('/home/samuel/Develop/IC/my_own_sac/mysac/envs/'
-                     'coppelia_scenes/')
+    SCENES_FOLDER = ('/home/figo/Develop/IC/sac_experiments/'
+                     '/mysac/envs/coppelia_scenes/')
 
     SCENE_FILE = 'cart_pole_2d_up.ttt'
 
@@ -33,7 +33,8 @@ class CartPoleEnv(Env):
                  headless=False,
                  height_limit=-0.4,
                  max_steps_under_height_limit=250,
-                 random_init: bool = True):
+                 random_init: bool = True,
+                 pomdp_mode: str = ''):
         self.total_steps = 0
         self.total_reward = 0
 
@@ -72,6 +73,11 @@ class CartPoleEnv(Env):
             # Sequence len: 50, obs len: 10
             self.last_actions = np.zeros((last_n_frames, 10)).astype('float32')
 
+        self.pomdp_mode = pomdp_mode
+
+        self.episode = 0
+        self.mass_position_history = []
+
     def render(self, _):
         pass
 
@@ -93,6 +99,11 @@ class CartPoleEnv(Env):
         cartvel, _ = simGetObjectVelocity(self.cart.get_handle())
         massvel, _ = simGetObjectVelocity(self.mass.get_handle())
 
+        if self.pomdp_mode:
+            self.mass_position_history.append(
+                [self.episode] + masspos.tolist()
+            )
+
         if not self.normalize_observation:
             obs = np.array([
                 cartpos[0], cartpos[1],
@@ -102,18 +113,25 @@ class CartPoleEnv(Env):
             ]).astype('float32')
 
         else:
-            obs = [min_max_norm(cartpos[0], -0.55, 0.55),
-                   min_max_norm(cartpos[1], -0.55, 0.55),
-                   min_max_norm(cartvel[0], -8, 8),
-                   min_max_norm(cartvel[1], -8, 8),
-                   min_max_norm(masspos[0], -1, 1),
-                   min_max_norm(masspos[1], -1, 1),
-                   min_max_norm(masspos[2], -1, 1),
-                   min_max_norm(massvel[0], -25, 25),
-                   min_max_norm(massvel[1], -25, 25),
-                   min_max_norm(massvel[2], -25, 25)]
+            obs = [
+                min_max_norm(cartpos[0], -0.55, 0.55),
+                min_max_norm(cartpos[1], -0.55, 0.55),
+                min_max_norm(cartvel[0], -8, 8),
+                min_max_norm(cartvel[1], -8, 8),
+                min_max_norm(masspos[0], -1, 1),
+                min_max_norm(masspos[1], -1, 1),
+                min_max_norm(masspos[2], -1, 1),
+                min_max_norm(massvel[0], -25, 25),
+                min_max_norm(massvel[1], -25, 25),
+                min_max_norm(massvel[2], -25, 25)
+            ]
 
             obs = np.array(obs).astype('float32')
+
+            if self.pomdp_mode == 'noise':
+                random_factor = np.random.random(size=obs.shape[0])
+                random_factor *= np.random.randint(-1, 1, size=obs.shape[0])
+                obs += obs * random_factor
 
         if self.buffer_for_rnn:
             self.last_actions = np.roll(self.last_actions, -10)
@@ -162,6 +180,9 @@ class CartPoleEnv(Env):
         self.pr.stop()
         self.random_init_state()
         self.pr.start()
+
+        self.mass_position_history = []
+        self.episode += 1
 
         return self.observe()
 
