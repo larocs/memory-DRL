@@ -112,7 +112,10 @@ class QModel(nn.Module):
 
         self.attention_base = nn.Sequential(
             AttentionBase(num_inputs=10, num_outputs=11, pos_embedding=True),
-            *(10*[AttentionBase(num_inputs=11, num_outputs=11)])
+            AttentionBase(num_inputs=11, num_outputs=11),
+            AttentionBase(num_inputs=11, num_outputs=11),
+            AttentionBase(num_inputs=11, num_outputs=11),
+            AttentionBase(num_inputs=11, num_outputs=11),
         )
 
         del kwargs['num_inputs']
@@ -142,7 +145,10 @@ class PolicyModel(nn.Module):
 
         self.attention_base = nn.Sequential(
             AttentionBase(num_inputs=10, num_outputs=11, pos_embedding=True),
-            *(10*[AttentionBase(num_inputs=11, num_outputs=11)])
+            AttentionBase(num_inputs=11, num_outputs=11),
+            AttentionBase(num_inputs=11, num_outputs=11),
+            AttentionBase(num_inputs=11, num_outputs=11),
+            AttentionBase(num_inputs=11, num_outputs=11),
         )
 
         self.mlp_policy = MLPPolicyModel(
