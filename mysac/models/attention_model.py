@@ -62,7 +62,7 @@ class AttentionBase(nn.Module):
 
         self.multi_head_attention = nn.MultiheadAttention(
             embed_dim=num_outputs,
-            num_heads=3,
+            num_heads=1,
             batch_first=True
         )
 
@@ -116,19 +116,18 @@ class QModel(nn.Module):
         self.attention_base = nn.Sequential(
             AttentionBase(
                 num_inputs=10,
-                num_outputs=6,
-                pos_embedding=True,
-                skip_first_connection=True
+                num_outputs=11,
+                pos_embedding=True
             ),
-            AttentionBase(num_inputs=6, num_outputs=6),
-            AttentionBase(num_inputs=6, num_outputs=6),
-            AttentionBase(num_inputs=6, num_outputs=6),
-            AttentionBase(num_inputs=6, num_outputs=6),
+            AttentionBase(num_inputs=11, num_outputs=11),
+            AttentionBase(num_inputs=11, num_outputs=11),
+            AttentionBase(num_inputs=11, num_outputs=11),
+            AttentionBase(num_inputs=11, num_outputs=11),
         )
 
         del kwargs['num_inputs']
 
-        self.mlp_q = MLPQModel(num_inputs=6, hidden_sizes=8, **kwargs)
+        self.mlp_q = MLPQModel(num_inputs=11, hidden_sizes=8, **kwargs)
 
         print('Q Model:', self)
 
@@ -154,18 +153,18 @@ class PolicyModel(nn.Module):
         self.attention_base = nn.Sequential(
             AttentionBase(
                 num_inputs=10,
-                num_outputs=6,
+                num_outputs=11,
                 pos_embedding=True,
                 skip_first_connection=True
             ),
-            AttentionBase(num_inputs=6, num_outputs=6),
-            AttentionBase(num_inputs=6, num_outputs=6),
-            AttentionBase(num_inputs=6, num_outputs=6),
-            AttentionBase(num_inputs=6, num_outputs=6),
+            AttentionBase(num_inputs=11, num_outputs=11),
+            AttentionBase(num_inputs=11, num_outputs=11),
+            AttentionBase(num_inputs=11, num_outputs=11),
+            AttentionBase(num_inputs=11, num_outputs=11),
         )
 
         self.mlp_policy = MLPPolicyModel(
-            *args, num_inputs=6, hidden_sizes=8, **kwargs)
+            *args, num_inputs=11, hidden_sizes=8, **kwargs)
 
     def forward(self, state: torch.tensor):
         if not hasattr(self, '_indexed_modules') and ENABLE_VIZ:
