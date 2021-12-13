@@ -87,6 +87,11 @@ def run_experiment_from_specs(experiment_folder: str):
 
         buffer = NumpySampledBufferForRNN(**specs["buffer"])
 
+    elif specs["models"]["mode"] == "crazy":
+        from mysac.models.crazy_model import PolicyModel, QModel
+
+        buffer = NumpySampledBufferForRNN(**specs["buffer"])
+
     device = get_device()
     policy = PolicyModel(**specs["models"]["policy"]).to(device)
     q1_model = QModel(**specs["models"]["q_model"]).to(device)

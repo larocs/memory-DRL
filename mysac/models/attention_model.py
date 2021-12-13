@@ -27,7 +27,7 @@ if ENABLE_VIZ:
 class AttentionBase(nn.Module):
     def __init__(
         self, num_inputs: int, num_outputs: int, pos_embedding: bool = False,
-        skip_first_connection: bool = False
+        skip_first_connection: bool = False, num_heads: int = 1
     ):
         super(AttentionBase, self).__init__()
 
@@ -62,7 +62,7 @@ class AttentionBase(nn.Module):
 
         self.multi_head_attention = nn.MultiheadAttention(
             embed_dim=num_outputs,
-            num_heads=1,
+            num_heads=num_heads,
             batch_first=True
         )
 
