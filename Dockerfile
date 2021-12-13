@@ -15,7 +15,8 @@ ENV QT_QPA_PLATFORM_PLUGIN_PATH=$COPPELIASIM_ROOT
 RUN mkdir /mysac
 COPY ./ /mysac/
 
-RUN git clone git@gitlab.com:LaRoCS/PyRep.git \\
+ADD id_rsa /root/.ssh/id_rsa
+RUN git clone git@gitlab.com:LaRoCS/PyRep.git \
     --single-branch updated_pyrep_with_marta
 RUN pip3 install -r PyRep/requirements.txt
 RUN pip3 install -e /PyRep/
