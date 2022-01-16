@@ -21,7 +21,7 @@ class CrazyAttentionLayer(nn.Module):
             num_inputs=20,
             num_outputs=21,
             pos_embedding=True,
-            num_frames=5
+            num_frames=10
         )
 
     def forward(self, state: torch.tensor) -> torch.tensor:
@@ -30,10 +30,10 @@ class CrazyAttentionLayer(nn.Module):
         new_batch = []
 
         for batch in state:
-            frames = batch.reshape(5, 10).unsqueeze(-1)
+            frames = batch.reshape(10, 10).unsqueeze(-1)
 
             new_frames = self.intraframe_att(frames)
-            new_frames = new_frames.reshape(5, 20).unsqueeze(0)
+            new_frames = new_frames.reshape(10, 20).unsqueeze(0)
 
             new_batch.append(new_frames)
 
@@ -52,7 +52,7 @@ class QModel(nn.Module):
 
         del kwargs['num_inputs']
 
-        self.mlp_q = MLPQModel(num_inputs=21, hidden_sizes=32, **kwargs)
+        self.mlp_q = MLPQModel(num_inputs=21, hidden_sizes=64, **kwargs)
 
         # print('Q Model:', self)
 
@@ -78,7 +78,7 @@ class PolicyModel(nn.Module):
         self.attention_base = CrazyAttentionLayer()
 
         self.mlp_policy = MLPPolicyModel(
-            *args, num_inputs=21, hidden_sizes=32, **kwargs)
+            *args, num_inputs=21, hidden_sizes=64, **kwargs)
 
     def forward(self, state: torch.tensor):
         if len(state.shape) == 2:
