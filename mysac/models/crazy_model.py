@@ -9,85 +9,37 @@ class CrazyAttentionLayer(nn.Module):
     def __init__(self):
         super(CrazyAttentionLayer, self).__init__()
 
-        self.cartpos_att = nn.Sequential(
-            AttentionBase(
-                num_inputs=2,
-                num_outputs=3,
-                pos_embedding=True
-            ),
-            AttentionBase(
-                num_inputs=3,
-                num_outputs=3
-            )
+        self.intraframe_att = AttentionBase(
+            num_inputs=1,
+            num_outputs=2,
+            pos_embedding=True,
+            num_heads=2,
+            num_frames=10
         )
 
-        self.cartvel_att = nn.Sequential(
-            AttentionBase(
-                num_inputs=2,
-                num_outputs=3,
-                pos_embedding=True
-            ),
-            AttentionBase(
-                num_inputs=3,
-                num_outputs=3
-            )
-        )
-
-        self.masspos_att = nn.Sequential(
-            AttentionBase(
-                num_inputs=3,
-                num_outputs=4,
-                pos_embedding=True
-            ),
-            AttentionBase(
-                num_inputs=4,
-                num_outputs=4
-            )
-        )
-
-        self.massvel_att = nn.Sequential(
-            AttentionBase(
-                num_inputs=3,
-                num_outputs=4,
-                pos_embedding=True
-            ),
-            AttentionBase(
-                num_inputs=4,
-                num_outputs=4
-            )
-        )
-
-        self.cat_att = nn.Sequential(
-            AttentionBase(
-                num_inputs=14,
-                num_outputs=15,
-                pos_embedding=True
-            ),
-            AttentionBase(
-                num_inputs=15,
-                num_outputs=15
-            )
+        self.interframe_att = AttentionBase(
+            num_inputs=20,
+            num_outputs=21,
+            pos_embedding=True,
+            num_frames=5
         )
 
     def forward(self, state: torch.tensor) -> torch.tensor:
         """
         """
-        cartpos = state[:, :, 0:2]
-        cartvel = state[:, :, 2:4]
-        masspos = state[:, :, 4:7]
-        massvel = state[:, :, 7:]
+        new_batch = []
 
-        cartpos = self.cartpos_att(cartpos)
-        cartvel = self.cartvel_att(cartvel)
-        masspos = self.masspos_att(masspos)
-        massvel = self.massvel_att(massvel)
+        for batch in state:
+            frames = batch.reshape(5, 10).unsqueeze(-1)
 
-        return self.cat_att(
-            torch.cat(
-                tensors=(cartpos, cartvel, masspos, massvel),
-                dim=-1
-            )
-        )
+            new_frames = self.intraframe_att(frames)
+            new_frames = new_frames.reshape(5, 20).unsqueeze(0)
+
+            new_batch.append(new_frames)
+
+        new_batch = torch.cat(tensors=new_batch)
+
+        return self.interframe_att(new_batch)
 
 
 class QModel(nn.Module):
@@ -100,9 +52,9 @@ class QModel(nn.Module):
 
         del kwargs['num_inputs']
 
-        self.mlp_q = MLPQModel(num_inputs=15, hidden_sizes=32, **kwargs)
+        self.mlp_q = MLPQModel(num_inputs=21, hidden_sizes=32, **kwargs)
 
-        print('Q Model:', self)
+        # print('Q Model:', self)
 
     def forward(self, state: torch.tensor, action: torch.tensor):
         state = self.attention_base.forward(state)
@@ -126,7 +78,7 @@ class PolicyModel(nn.Module):
         self.attention_base = CrazyAttentionLayer()
 
         self.mlp_policy = MLPPolicyModel(
-            *args, num_inputs=15, hidden_sizes=32, **kwargs)
+            *args, num_inputs=21, hidden_sizes=32, **kwargs)
 
     def forward(self, state: torch.tensor):
         if len(state.shape) == 2:

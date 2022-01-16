@@ -27,12 +27,14 @@ if ENABLE_VIZ:
 class AttentionBase(nn.Module):
     def __init__(
         self, num_inputs: int, num_outputs: int, pos_embedding: bool = False,
-        skip_first_connection: bool = False, num_heads: int = 1
+        skip_first_connection: bool = False, num_heads: int = 1,
+        num_frames: int = 20
     ):
         super(AttentionBase, self).__init__()
 
         self.pos_embedding = pos_embedding
         self.skip_first_connection = skip_first_connection
+        self.num_frames = num_frames
 
         if pos_embedding:
             num_inputs += 1
@@ -73,9 +75,11 @@ class AttentionBase(nn.Module):
         if self.pos_embedding:
             batch_size = state.shape[0]
 
-            position_enconding = torch.arange(20).to('cuda:0')/20
-            position_enconding = position_enconding.repeat(batch_size)
-            position_enconding = position_enconding.reshape(batch_size, 20, 1)
+            position_enconding = torch.arange(self.num_frames) \
+                .to('cuda:0')/self.num_frames \
+
+            position_enconding = position_enconding.repeat(batch_size) \
+                .reshape(batch_size, self.num_frames, 1)
 
             state = torch.cat([state, position_enconding], dim=-1)
 
