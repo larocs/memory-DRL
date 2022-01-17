@@ -1,3 +1,5 @@
+from hashlib import new
+
 import torch
 from mysac.models.attention_model import AttentionBase
 from mysac.models.mlp import PolicyModel as MLPPolicyModel
@@ -24,6 +26,12 @@ class CrazyAttentionLayer(nn.Module):
             num_frames=10
         )
 
+        self.linear = nn.Linear(
+            in_features=21,
+            out_features=10,
+            bias=False
+        )
+
     def forward(self, state: torch.tensor) -> torch.tensor:
         """
         """
@@ -39,7 +47,9 @@ class CrazyAttentionLayer(nn.Module):
 
         new_batch = torch.cat(tensors=new_batch)
 
-        return self.interframe_att(new_batch)
+        new_batch = self.interframe_att(new_batch)
+
+        return self.linear(new_batch)
 
 
 class QModel(nn.Module):
@@ -52,7 +62,7 @@ class QModel(nn.Module):
 
         del kwargs['num_inputs']
 
-        self.mlp_q = MLPQModel(num_inputs=21, hidden_sizes=64, **kwargs)
+        self.mlp_q = MLPQModel(num_inputs=10, hidden_sizes=32, **kwargs)
 
         # print('Q Model:', self)
 
@@ -78,7 +88,7 @@ class PolicyModel(nn.Module):
         self.attention_base = CrazyAttentionLayer()
 
         self.mlp_policy = MLPPolicyModel(
-            *args, num_inputs=21, hidden_sizes=64, **kwargs)
+            *args, num_inputs=10, hidden_sizes=32, **kwargs)
 
     def forward(self, state: torch.tensor):
         if len(state.shape) == 2:
