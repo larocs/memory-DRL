@@ -63,7 +63,10 @@ class QModel(nn.Module):
 
         del kwargs['num_inputs']
 
-        self.mlp_q = MLPQModel(num_inputs=10, hidden_sizes=32, **kwargs)
+        self.linear = nn.Linear(
+            in_features=12,
+            out_features=1
+        )
 
         # print('Q Model:', self)
 
@@ -72,7 +75,7 @@ class QModel(nn.Module):
 
         state = state.mean(dim=1)
 
-        return self.mlp_q.forward(observations=state, actions=action)
+        return torch.cat([state, action], 1)
 
 
 class PolicyModel(nn.Module):
