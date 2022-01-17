@@ -2,6 +2,7 @@ from hashlib import new
 
 import torch
 from mysac.models.attention_model import AttentionBase
+from mysac.models.mlp import LOG_SIG_MAX, LOG_SIG_MIN
 from mysac.models.mlp import PolicyModel as MLPPolicyModel
 from mysac.models.mlp import QModel as MLPQModel
 from torch import nn
@@ -87,8 +88,15 @@ class PolicyModel(nn.Module):
 
         self.attention_base = CrazyAttentionLayer()
 
-        self.mlp_policy = MLPPolicyModel(
-            *args, num_inputs=10, hidden_sizes=32, **kwargs)
+        self.mean_linear = nn.Linear(
+            in_features=10,
+            out_features=2
+        )
+
+        self.std_linear = nn.Linear(
+            in_features=10,
+            out_features=2
+        )
 
     def forward(self, state: torch.tensor):
         if len(state.shape) == 2:
@@ -96,10 +104,11 @@ class PolicyModel(nn.Module):
 
         state = self.attention_base.forward(state).mean(dim=1)
 
-        mean, std = self.mlp_policy.forward(observations=state)
+        mean = self.mean_linear(state)
+        std = self.std_linear(state).exp()
 
         if mean.shape[0] == 1:
             mean = mean.squeeze(0)
             std = std.squeeze(0)
 
-        return mean, std
+        return mean, torch.clamp(std, LOG_SIG_MIN, LOG_SIG_MAX)
