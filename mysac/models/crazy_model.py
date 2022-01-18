@@ -27,12 +27,6 @@ class CrazyAttentionLayer(nn.Module):
             num_frames=10
         )
 
-        self.linear = nn.Linear(
-            in_features=21,
-            out_features=10,
-            bias=False
-        )
-
     def forward(self, state: torch.tensor) -> torch.tensor:
         """
         """
@@ -48,9 +42,7 @@ class CrazyAttentionLayer(nn.Module):
 
         new_batch = torch.cat(tensors=new_batch)
 
-        new_batch = self.interframe_att(new_batch)
-
-        return self.linear(new_batch)
+        return self.interframe_att(new_batch)
 
 
 class QModel(nn.Module):
@@ -63,19 +55,31 @@ class QModel(nn.Module):
 
         del kwargs['num_inputs']
 
-        self.linear = nn.Linear(
-            in_features=12,
-            out_features=1
+        self.linear = nn.Sequential(
+            nn.Linear(
+                in_features=212,
+                out_features=256
+            ),
+            nn.ReLU(),
+            nn.Linear(
+                in_features=256,
+                out_features=128
+            ),
+            nn.ReLU(),
+            nn.Linear(
+                in_features=128,
+                out_features=1
+            )
         )
 
         # print('Q Model:', self)
 
     def forward(self, state: torch.tensor, action: torch.tensor):
         state = self.attention_base.forward(state)
+        state = state.reshape(-1, 210)
+        state = torch.cat([state, action], 1)
 
-        state = state.mean(dim=1)
-
-        return torch.cat([state, action], 1)
+        return self.linear(state)
 
 
 class PolicyModel(nn.Module):
@@ -91,21 +95,45 @@ class PolicyModel(nn.Module):
 
         self.attention_base = CrazyAttentionLayer()
 
-        self.mean_linear = nn.Linear(
-            in_features=10,
-            out_features=2
+        self.mean_linear = nn.Sequential(
+            nn.Linear(
+                in_features=210,
+                out_features=256
+            ),
+            nn.ReLU(),
+            nn.Linear(
+                in_features=256,
+                out_features=128
+            ),
+            nn.ReLU(),
+            nn.Linear(
+                in_features=128,
+                out_features=2
+            )
         )
 
-        self.std_linear = nn.Linear(
-            in_features=10,
-            out_features=2
+        self.std_linear = nn.Sequential(
+            nn.Linear(
+                in_features=210,
+                out_features=256
+            ),
+            nn.ReLU(),
+            nn.Linear(
+                in_features=256,
+                out_features=128
+            ),
+            nn.ReLU(),
+            nn.Linear(
+                in_features=128,
+                out_features=2
+            )
         )
 
     def forward(self, state: torch.tensor):
         if len(state.shape) == 2:
             state = state.unsqueeze(0)
 
-        state = self.attention_base.forward(state).mean(dim=1)
+        state = self.attention_base.forward(state).reshape(-1, 210)
 
         mean = self.mean_linear(state)
         std = self.std_linear(state).exp()
