@@ -58,17 +58,19 @@ class QModel(nn.Module):
         self.linear = nn.Sequential(
             nn.Linear(
                 in_features=212,
+                out_features=256
+            ),
+            nn.Dropout(0.5),
+            nn.ReLU(),
+            nn.Linear(
+                in_features=256,
                 out_features=128
             ),
+            nn.Dropout(0.5),
             nn.ReLU(),
             nn.Linear(
                 in_features=128,
-                out_features=64
-            ),
-            nn.ReLU(),
-            nn.Linear(
-                in_features=64,
-                out_features=2
+                out_features=1
             )
         )
 
@@ -98,16 +100,18 @@ class PolicyModel(nn.Module):
         self.mean_linear = nn.Sequential(
             nn.Linear(
                 in_features=210,
+                out_features=256
+            ),
+            nn.Dropout(0.5),
+            nn.ReLU(),
+            nn.Linear(
+                in_features=256,
                 out_features=128
             ),
+            nn.Dropout(0.5),
             nn.ReLU(),
             nn.Linear(
                 in_features=128,
-                out_features=64
-            ),
-            nn.ReLU(),
-            nn.Linear(
-                in_features=64,
                 out_features=2
             )
         )
@@ -115,16 +119,18 @@ class PolicyModel(nn.Module):
         self.std_linear = nn.Sequential(
             nn.Linear(
                 in_features=210,
+                out_features=256
+            ),
+            nn.Dropout(0.5),
+            nn.ReLU(),
+            nn.Linear(
+                in_features=256,
                 out_features=128
             ),
+            nn.Dropout(0.5),
             nn.ReLU(),
             nn.Linear(
                 in_features=128,
-                out_features=64
-            ),
-            nn.ReLU(),
-            nn.Linear(
-                in_features=64,
                 out_features=2
             )
         )
