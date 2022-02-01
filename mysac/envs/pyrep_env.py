@@ -128,10 +128,14 @@ class CartPoleEnv(Env):
 
             obs = np.array(obs).astype('float32')
 
-        if self.pomdp_mode == 'noise':
-            random_factor = np.random.random(size=obs.shape[0])
-            random_factor *= np.random.randint(-1, 1, size=obs.shape[0])
-            obs += obs * random_factor
+        if self.pomdp_mode:
+            if self.pomdp_mode == 'noise':
+                random_factor = np.random.random(size=obs.shape[0])
+                random_factor *= np.random.randint(-1, 1, size=obs.shape[0])
+                obs += obs * random_factor
+
+            else:
+                raise ValueError('Valor para POMDP não reconhecido')
 
         if self.buffer_for_rnn:
             self.last_actions = np.roll(self.last_actions, -10)
