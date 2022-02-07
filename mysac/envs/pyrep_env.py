@@ -1,8 +1,10 @@
 import math
+import re
 from typing import List
 
 import numpy as np
 from gym import Env, spaces
+from mysac.envs import CARTPOLE_OBSERVATIONS
 from pyrep import PyRep
 from pyrep.backend import sim
 from pyrep.backend.sim import (simGetJointMatrix, simGetObjectVelocity,
@@ -133,6 +135,18 @@ class CartPoleEnv(Env):
                 random_factor = np.random.random(size=obs.shape[0])
                 random_factor *= np.random.randint(-1, 1, size=obs.shape[0])
                 obs += obs * random_factor
+
+            elif 'zero(' in self.pomdp_mode:
+                observations_to_zero = re.findall(
+                    pattern=r'zero(?:\()([a-z\_\,]*)(?:\))',
+                    string=self.pomdp_mode
+                )
+
+                observations_to_zero = observations_to_zero[0].split(',')
+
+                for state_name in observations_to_zero:
+                    position = CARTPOLE_OBSERVATIONS[state_name]
+                    obs[position] = 0
 
             else:
                 raise ValueError('Valor para POMDP não reconhecido')

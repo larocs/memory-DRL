@@ -18,7 +18,7 @@ from mysac.sac.sac import SACAgent
 from mysac.samplers.sampler import BasicTrajectorySampler
 from tqdm import tqdm
 
-REPEAT_TEST_N_TIMES = 10
+REPEAT_TEST_N_TIMES = 50
 
 
 def reset_random_seed():
@@ -57,6 +57,117 @@ def build_everything_from_specs(specs,
     return env, policy, agent
 
 
+def basic_run(
+        env: CartPoleEnv, agent: SACAgent, deterministic: bool = False
+) -> np.array:
+    """
+    Sample a trajectory from the given env/agent
+
+    Args:
+        env: the environment where the steps will be sampled from
+        agent: the agent for sampling the actions given the observations
+        deterministic: if True, use the best actions only
+
+    Returns:
+        A NumPy arrat containing all the z positions for the pole
+    """
+    info = BasicTrajectorySampler.sample_trajectory(
+        env=env,
+        agent=agent,
+        max_steps_per_episode=250,
+        total_steps=250,
+        deterministic=deterministic
+    )
+
+    observations = info['observations']
+
+    if env.buffer_for_rnn:
+        # Get the 6th position of the last frame of every observation
+        mass_z_positions = observations[:, -1, 6]
+
+    else:
+        mass_z_positions = observations[:, 6]
+
+    mass_z_positions = mass_z_positions[1:]
+
+    return mass_z_positions
+
+
+def test_num_stable_frames(
+        specs, eval_folder: str, exp_path: str):
+    """
+    Measure mean number of frames where the mass height was above 0.55m
+
+    Args:
+        eval_folder: the folder where the evaluation data will be saved
+        exp_path: the root folder to the experiment
+    """
+    POMDP_MODES = [
+        None,
+        'noise',
+        'zero(cart_pos_x,cart_pos_y)',
+        'zero(cart_vel_x,cart_vel_y)',
+        'zero(mass_pos_x,mass_pos_y,mass_pos_z)',
+        'zero(mass_vel_x,mass_vel_y,mass_vel_z)'
+    ]
+
+    specs['env']['headless'] = False
+
+    try:
+        eval_folder = eval_folder + '/test_num_stable_frames/'
+        os.mkdir(eval_folder)
+
+    except FileExistsError:
+        print('Test num stable frames exists, skipping...')
+        return
+
+    for pomdp_mode in POMDP_MODES:
+        print('Testing', pomdp_mode)
+
+        sub_eval_folder = eval_folder + str(pomdp_mode) + '/'
+        os.mkdir(sub_eval_folder)
+
+        specs['env']['specs']['pomdp_mode'] = pomdp_mode
+
+        env: CartPoleEnv = env_from_specs(specs=specs)
+        policy = policy_from_specs(specs=specs, exp_path=exp_path)
+        agent = make_agent(policy=policy, env=env)
+
+        df = pd.DataFrame(
+            columns=['test', 'z']
+        )
+
+        for test in tqdm(range(REPEAT_TEST_N_TIMES), desc=pomdp_mode):
+            mass_z_positions = basic_run(
+                env=env,
+                agent=agent,
+                deterministic=True
+            )
+
+            n_points = len(mass_z_positions)
+
+            df = df.append(
+                pd.DataFrame(
+                    {
+                        'test': n_points * [test],
+                        'z': mass_z_positions
+                    }
+                )
+            )
+
+        env.pr.shutdown()
+
+        df.to_csv(
+            path_or_buf=sub_eval_folder + 'z_history.csv',
+            mode='a'
+        )
+
+        df['success'] = df['z'] > 0.55
+        mean = df.groupby('test').sum()['success'].mean()
+
+        os.mkdir(sub_eval_folder + str(mean))
+
+
 def test_actuation_signal(
         eval_folder: str, exp_path: str,
         increase_difficulty_callback: Callable[[CartPoleEnv], Optional[bool]]):
@@ -89,24 +200,11 @@ def test_actuation_signal(
         reset_random_seed()
 
         for test in range(REPEAT_TEST_N_TIMES):
-            info = BasicTrajectorySampler.sample_trajectory(
+            mass_z_positions = basic_run(
                 env=env,
                 agent=agent,
-                max_steps_per_episode=250,
-                total_steps=250,
                 deterministic=False
             )
-
-            observations = info['observations']
-
-            if env.buffer_for_rnn:
-                # Get the 6th position of the last frame of every observation
-                mass_z_positions = observations[:, -1, 6]
-
-            else:
-                mass_z_positions = observations[:, 6]
-
-            mass_z_positions = mass_z_positions[1:]
 
             n_points = len(mass_z_positions)
             plt.title(f'Started from {mass_z_positions[0]}')
@@ -319,7 +417,13 @@ if __name__ == '__main__':
     #     exp_path=args.exp_path
     # )
 
-    test_noisy_observation(
+    # test_noisy_observation(
+    #     specs=specs,
+    #     eval_folder=eval_folder,
+    #     exp_path=args.exp_path
+    # )
+
+    test_num_stable_frames(
         specs=specs,
         eval_folder=eval_folder,
         exp_path=args.exp_path

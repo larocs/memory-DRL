@@ -2,15 +2,9 @@ from typing import List
 
 import numpy as np
 from gym import spaces
+from mysac.envs import CARTPOLE_OBSERVATIONS
 from mysac.envs.cartpole_perturb import CartPolePerturbationEnv
 from mysac.envs.pyrep_env import CartPoleEnv
-
-OBSERVATIONS = {
-    'cart_pos_x': 0, 'cart_pos_y': 1,
-    'cart_vel_x': 2, 'cart_vel_y': 3,
-    'mass_pos_x': 4, 'mass_pos_y': 5, 'mass_pos_z': 6,
-    'mass_vel_x': 7, 'mass_vel_y': 8, 'mass_vel_z': 9
-}
 
 
 class CartPoleIgnoreStatesEnv(CartPoleEnv):
@@ -28,7 +22,7 @@ class CartPoleIgnoreStatesEnv(CartPoleEnv):
         super().__init__(*args, **kwargs)
 
         self.observations_to_ignore = [
-            OBSERVATIONS[obs_name] for obs_name in ignore_obs
+            CARTPOLE_OBSERVATIONS[obs_name] for obs_name in ignore_obs
         ]
 
         num_obs = 10 - len(self.observations_to_ignore)
