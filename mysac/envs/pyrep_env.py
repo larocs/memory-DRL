@@ -22,6 +22,66 @@ def min_max_norm(x, min, max):
     return (x - min)/(max - min)
 
 
+class RandomPOMDP:
+    """
+    Includes random noise in some of the observation array positions for a
+    random number of steps
+
+    When calling RandomPOMDP.step, you should specify one of the following
+    modes:
+    - random_noise: apply random noise to random array positions for a random
+        number of frames
+    - random_zero: sets some of the array positions to zero for a random
+        number of frames
+    """
+
+    def __init__(self) -> None:
+        self.which_positions = []
+        self.how_many_frames = 0
+        self.delay = 0
+
+    def step(
+            self, observation: np.array, mode: str = 'random_noise'
+    ) -> np.array:
+        """
+        Process the observation possibly including random noise
+
+        Args:
+            mode: one of `random_zero` and `random_noise`
+        """
+        if self.how_many_frames == self.delay:
+            self.how_many_frames = int(np.random.uniform(0, 15))
+            self.delay = int(np.random.uniform(-6, -1))
+
+            self.which_positions = np.random.choice(
+                a=np.arange(10),
+                size=int(np.random.uniform(1, 5)),
+                replace=False
+            )
+
+        elif self.how_many_frames >= 0:
+            if mode == 'random_zero':
+                for position in self.which_positions:
+                    observation[position] = 0
+
+            if mode == 'random_noise':
+                random_factor = np.random.random(
+                    size=observation.shape[0]
+                )
+
+                random_factor *= np.random.randint(
+                    low=-1,
+                    high=1,
+                    size=observation.shape[0]
+                )
+
+                observation += observation * random_factor
+
+        self.how_many_frames -= 1
+
+        return observation
+
+
 class CartPoleEnv(Env):
     SCENES_FOLDER = ('/home/figo/Develop/IC/sac_experiments/'
                      '/mysac/envs/coppelia_scenes/')
@@ -79,6 +139,8 @@ class CartPoleEnv(Env):
 
         self.episode = 0
         self.mass_position_history = []
+
+        self.random_pomdp = RandomPOMDP()
 
     def render(self, _):
         pass
@@ -147,6 +209,12 @@ class CartPoleEnv(Env):
                 for state_name in observations_to_zero:
                     position = CARTPOLE_OBSERVATIONS[state_name]
                     obs[position] = 0
+
+            elif self.pomdp_mode[:7] == 'random_':
+                obs = self.random_pomdp.step(
+                    observation=obs,
+                    mode=self.pomdp_mode
+                )
 
             else:
                 raise ValueError('Valor para POMDP não reconhecido')

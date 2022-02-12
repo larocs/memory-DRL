@@ -108,7 +108,9 @@ def test_num_stable_frames(
         'zero(cart_pos_x,cart_pos_y)',
         'zero(cart_vel_x,cart_vel_y)',
         'zero(mass_pos_x,mass_pos_y,mass_pos_z)',
-        'zero(mass_vel_x,mass_vel_y,mass_vel_z)'
+        'zero(mass_vel_x,mass_vel_y,mass_vel_z)',
+        'random_zero',
+        'random_noise'
     ]
 
     specs['env']['headless'] = False
@@ -163,9 +165,14 @@ def test_num_stable_frames(
         )
 
         df['success'] = df['z'] > 0.55
-        mean = df.groupby('test').sum()['success'].mean()
 
+        mean = df.groupby('test').sum()['success'].mean()
         os.mkdir(sub_eval_folder + str(mean))
+
+        df.groupby('test') \
+            .sum()['success'] \
+            .describe() \
+            .to_csv(sub_eval_folder + 'statistics.csv')
 
 
 def test_actuation_signal(
