@@ -231,7 +231,6 @@ class CartPoleEnv(Env):
         return obs.astype('float32')
 
     def step(self, action):
-        time.sleep(0.1)
         self.total_steps += 1
 
         v, v1 = 2*action
@@ -278,33 +277,6 @@ class CartPoleEnv(Env):
         self.pr.stop()
         self.random_init_state()
         self.pr.start()
-
-        print(self.episodes)
-        if self.mass_position_history and self.episodes == 3:
-            import pandas as pd
-
-            df = pd.DataFrame(
-                self.mass_position_history,
-                columns=['episode', 'x', 'y', 'z']
-            )
-
-            df.to_csv('cartpole_pos.csv')
-
-            df = pd.DataFrame(
-                self.mass_velocity_history,
-                columns=['vx', 'vy']
-            )
-
-            df.to_csv('cartpole_vel.csv')
-
-            df = pd.DataFrame(
-                {
-                    'reward': self.reward_history
-                }
-            )
-            df.to_csv('reward.csv')
-
-            raise Exception
 
         self.mass_velocity_history = []
         self.mass_position_history = []
