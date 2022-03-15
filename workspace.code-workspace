@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../taperead/taperead3"
+		}
+	],
+	"settings": {
+		"python.pythonPath": "/home/samuel/anaconda3/envs/rl/bin/python"
+	}
+}
