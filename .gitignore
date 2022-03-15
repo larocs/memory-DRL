@@ -35,6 +35,8 @@ Latest commit 14f8a8b on 11 Apr
  
 experiments/
 docker/
+nao_videos/
+*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

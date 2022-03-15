@@ -1,5 +1,6 @@
 import math
 import re
+import time
 from typing import List
 
 import numpy as np
@@ -97,6 +98,7 @@ class CartPoleEnv(Env):
                  max_steps_under_height_limit=250,
                  random_init: bool = True,
                  pomdp_mode: str = ''):
+        self.episodes = 0
         self.total_steps = 0
         self.total_reward = 0
 
@@ -139,6 +141,8 @@ class CartPoleEnv(Env):
 
         self.episode = 0
         self.mass_position_history = []
+        self.mass_velocity_history = []
+        self.reward_history = []
 
         self.random_pomdp = RandomPOMDP()
 
@@ -163,10 +167,10 @@ class CartPoleEnv(Env):
         cartvel, _ = simGetObjectVelocity(self.cart.get_handle())
         massvel, _ = simGetObjectVelocity(self.mass.get_handle())
 
-        if self.pomdp_mode:
-            self.mass_position_history.append(
-                [self.episode] + masspos.tolist()
-            )
+        # if self.pomdp_mode:
+        self.mass_position_history.append(
+            [self.episode] + masspos.tolist()
+        )
 
         if not self.normalize_observation:
             obs = np.array([
@@ -227,9 +231,14 @@ class CartPoleEnv(Env):
         return obs.astype('float32')
 
     def step(self, action):
+        time.sleep(0.1)
         self.total_steps += 1
 
         v, v1 = 2*action
+
+        self.mass_velocity_history.append(
+            (v, v1)
+        )
 
         self.slider.set_joint_target_velocity(v)
         self.slider2.set_joint_target_velocity(v1)
@@ -251,9 +260,12 @@ class CartPoleEnv(Env):
         self.episode_steps += 1
         self.total_reward += reward
 
+        self.reward_history.append(reward)
+
         return obs, reward, False, ''
 
     def reset(self):
+        self.episodes += 1
         self.total_reward = 0
         self.episode_steps = 0
 
@@ -267,6 +279,34 @@ class CartPoleEnv(Env):
         self.random_init_state()
         self.pr.start()
 
+        print(self.episodes)
+        if self.mass_position_history and self.episodes == 3:
+            import pandas as pd
+
+            df = pd.DataFrame(
+                self.mass_position_history,
+                columns=['episode', 'x', 'y', 'z']
+            )
+
+            df.to_csv('cartpole_pos.csv')
+
+            df = pd.DataFrame(
+                self.mass_velocity_history,
+                columns=['vx', 'vy']
+            )
+
+            df.to_csv('cartpole_vel.csv')
+
+            df = pd.DataFrame(
+                {
+                    'reward': self.reward_history
+                }
+            )
+            df.to_csv('reward.csv')
+
+            raise Exception
+
+        self.mass_velocity_history = []
         self.mass_position_history = []
         self.episode += 1
 

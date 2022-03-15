@@ -1,8 +1,10 @@
+import random
 import time
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from gym import Env, spaces
+from mysac.envs.nao.constants import STATES_TO_DROP
 from pyrep import PyRep
 from pyrep.backend.sim import simGetObjectVelocity
 from pyrep.objects.force_sensor import ForceSensor
@@ -92,8 +94,13 @@ class NAO:
 
     def __init__(self, headless: bool = True,
                  energy_cost_threshold: float = ENERGY_COST_THRESHOLD,
+                 pomdp_states: Optional[List[str]] = None,
+                 pomdp_mode: str = 'drop',
                  *args, **kwargs):
         print('Energy cost:', energy_cost_threshold)
+
+        print('POMDP:', pomdp_mode, pomdp_states)
+
         self.all_joints: List[Joint] = []
         self.foot_sensors: List[ForceSensor] = []
         self.joint_limits = []
@@ -115,6 +122,9 @@ class NAO:
             low=np.array(len(self.joint_limits) * [-1]),
             high=np.array(len(self.joint_limits) * [1]),
         )
+
+        self.pomdp_states = pomdp_states
+        self.pomdp_mode = pomdp_mode
 
     def load_force_sensors(self) -> None:
         """
@@ -189,7 +199,7 @@ class WalkingNao(NAO, Env):
             joint.get_joint_position() for joint in self.all_joints
         ]
 
-        return np.array(
+        observation = np.array(
             (
                 head_z,
                 orientation_x,
@@ -202,6 +212,24 @@ class WalkingNao(NAO, Env):
             ),
             dtype='float32'
         )
+
+        if self.pomdp_states:
+            if self.pomdp_mode == 'drop':
+                for state_to_drop in self.pomdp_states:
+                    observation[STATES_TO_DROP[state_to_drop]] = 0
+
+            elif self.pomdp_mode == 'noise':
+                for state_to_drop in self.pomdp_states:
+                    slice_to_drop: slice = STATES_TO_DROP[state_to_drop]
+
+                    noise = np.random.rand(
+                        slice_to_drop.stop - slice_to_drop.start)
+
+                    noise = observation[slice_to_drop] * noise
+
+                    observation[slice_to_drop] += noise
+
+        return observation
 
     def reset(self, random_initialization: bool = True) -> np.array:
         """

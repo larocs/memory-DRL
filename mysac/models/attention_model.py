@@ -1,14 +1,10 @@
 # pylint: disable=no-member
-import time
 
 import torch
-import torch.nn.functional as F
-from matplotlib import pyplot
 from mysac.models.mlp import PolicyModel as MLPPolicyModel
 from mysac.models.mlp import QModel as MLPQModel
-from numpy import intp, mod
+from mysac.utils import get_device
 from torch import nn
-from torch.nn.modules.container import Sequential
 
 # Numerical stability
 LOG_SIG_MAX = 2
@@ -18,26 +14,12 @@ LOG_SIG_MIN = -20
 B_INIT_VALUE = 0.1
 W_INIT_VALUE = 3e-3
 
-ENABLE_VIZ = False
-
-if ENABLE_VIZ:
-    pyplot.ion()
-
 
 class AttentionBase(nn.Module):
-    def __init__(
-        self, num_inputs: int, num_outputs: int, pos_embedding: bool = False,
-        skip_first_connection: bool = False, num_heads: int = 1,
-        num_frames: int = 20
-    ):
+    def __init__(self, num_inputs: int, num_outputs: int):
         super(AttentionBase, self).__init__()
 
-        self.pos_embedding = pos_embedding
-        self.skip_first_connection = skip_first_connection
-        self.num_frames = num_frames
-
-        if pos_embedding:
-            num_inputs += 1
+        num_inputs = num_inputs + 1
 
         self.query = nn.Linear(
             in_features=num_inputs,
@@ -58,13 +40,19 @@ class AttentionBase(nn.Module):
         )
 
         self.post_linear = nn.Linear(
-            in_features=num_outputs,
+            in_features=num_inputs,
             out_features=num_outputs
         )
 
         self.multi_head_attention = nn.MultiheadAttention(
             embed_dim=num_outputs,
-            num_heads=num_heads,
+            num_heads=1,
+            batch_first=True
+        )
+
+        self.recurrent_layer = nn.LSTM(
+            num_inputs,
+            32,
             batch_first=True
         )
 
@@ -72,14 +60,15 @@ class AttentionBase(nn.Module):
         self.norm_2 = nn.LayerNorm(normalized_shape=num_outputs)
 
     def forward(self, state: torch.tensor) -> torch.tensor:
-        if self.pos_embedding:
+        if True:
             batch_size = state.shape[0]
+            num_frames = state.shape[1]
 
-            position_enconding = torch.arange(self.num_frames) \
-                .to('cuda:0')/self.num_frames \
+            position_enconding = torch.arange(num_frames).to(get_device())
+            position_enconding *= num_frames
 
-            position_enconding = position_enconding.repeat(batch_size) \
-                .reshape(batch_size, self.num_frames, 1)
+            position_enconding = position_enconding.repeat(batch_size)
+            position_enconding = position_enconding.reshape(batch_size, 20, 1)
 
             state = torch.cat([state, position_enconding], dim=-1)
 
@@ -87,28 +76,17 @@ class AttentionBase(nn.Module):
         K = self.key(state)
         V = self.value(state)
 
-        context, attn_output_weights = self.multi_head_attention(
-            query=Q,
-            key=K,
-            value=V,
-            need_weights=ENABLE_VIZ
-        )
+        context, _ = self.multi_head_attention(query=Q, key=K, value=V)
 
-        if not self.skip_first_connection:
-            context = self.norm_1(context + state)
+        context = self.norm_1(context + state)
 
         linear_context = self.post_linear(context)
 
-        if getattr(self, '_index_in_att_modules', None) == 10:
-            pyplot.imshow(
-                X=attn_output_weights.cpu().detach().numpy()[0],
-                vmin=0,
-                vmax=1
-            )
+        _, (embedded, _) = self.recurrent_layer(
+            self.norm_2(context + linear_context)
+        )
 
-            pyplot.pause(0.0001)
-
-        return self.norm_2(context + linear_context)
+        return embedded.squeeze(0)
 
 
 class QModel(nn.Module):
@@ -117,28 +95,16 @@ class QModel(nn.Module):
     ):
         super(QModel, self).__init__()
 
-        self.attention_base = nn.Sequential(
-            AttentionBase(
-                num_inputs=30,
-                num_outputs=31,
-                pos_embedding=True
-            ),
-            AttentionBase(num_inputs=31, num_outputs=31),
-            AttentionBase(num_inputs=31, num_outputs=31),
-            AttentionBase(num_inputs=31, num_outputs=31),
-            AttentionBase(num_inputs=31, num_outputs=31),
-        )
+        self.attention_base = AttentionBase(num_inputs=10, num_outputs=11)
 
         del kwargs['num_inputs']
 
-        self.mlp_q = MLPQModel(num_inputs=31, hidden_sizes=64, **kwargs)
+        self.mlp_q = MLPQModel(num_inputs=32, hidden_sizes=32, **kwargs)
 
         print('Q Model:', self)
 
     def forward(self, state: torch.tensor, action: torch.tensor):
         state = self.attention_base.forward(state)
-
-        state = state.mean(dim=1)
 
         return self.mlp_q.forward(observations=state, actions=action)
 
@@ -154,42 +120,16 @@ class PolicyModel(nn.Module):
     ):
         super(PolicyModel, self).__init__()
 
-        self.attention_base = nn.Sequential(
-            AttentionBase(
-                num_inputs=30,
-                num_outputs=31,
-                pos_embedding=True,
-                skip_first_connection=True
-            ),
-            AttentionBase(num_inputs=31, num_outputs=31),
-            AttentionBase(num_inputs=31, num_outputs=31),
-            AttentionBase(num_inputs=31, num_outputs=31),
-            AttentionBase(num_inputs=31, num_outputs=31),
-        )
+        self.attention_base = AttentionBase(num_inputs=10, num_outputs=11)
 
         self.mlp_policy = MLPPolicyModel(
-            *args, num_inputs=31, hidden_sizes=64, **kwargs)
+            *args, num_inputs=32, hidden_sizes=32, **kwargs)
 
     def forward(self, state: torch.tensor):
-        if not hasattr(self, '_indexed_modules') and ENABLE_VIZ:
-            for module in self.attention_base.modules():
-                if isinstance(module, Sequential):
-                    for i, sub_module in enumerate(module):
-                        sub_module._index_in_att_modules = i
-
-            self._indexed_modules = True
-
         if len(state.shape) == 2:
             state = state.unsqueeze(0)
 
-        if False:
-            pyplot.imshow(
-                self.attention_base.forward(state).cpu().detach().numpy()[0]
-            )
-
-            pyplot.pause(0.0001)
-
-        state = self.attention_base.forward(state).mean(dim=1)
+        state = self.attention_base.forward(state)
 
         mean, std = self.mlp_policy.forward(observations=state)
 
