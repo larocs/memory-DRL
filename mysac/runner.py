@@ -13,7 +13,10 @@ import torch
 from mysac.batch.numpy_batch import (NumpySampledBuffer,
                                      NumpySampledBufferForRNN)
 from mysac.envs.cartpole_ignore_inputs import CartPoleIgnoreStatesEnv
-from mysac.envs.marta.marta import MartaWalkEnv
+try:
+    from mysac.envs.marta.marta import MartaWalkEnv
+except ModuleNotFoundError:
+    print('MartaEnv was not found')
 from mysac.envs.nao import RecurrentNAO, WalkingNao
 from mysac.envs.pyrep_env import CartPoleEnv
 from mysac.evaluators.sac_evaluator import SACEvaluator
