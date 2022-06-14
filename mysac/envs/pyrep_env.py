@@ -93,7 +93,7 @@ class CartPoleEnv(Env):
                  last_n_frames=50,
                  buffer_for_rnn=False,
                  normalize_observation=False,
-                 headless=False,
+                 headless=True,
                  height_limit=-0.4,
                  max_steps_under_height_limit=250,
                  random_init: bool = True,
@@ -261,7 +261,7 @@ class CartPoleEnv(Env):
 
         self.reward_history.append(reward)
 
-        return obs, reward, False, ''
+        return obs, reward, False, {}
 
     def reset(self):
         self.episodes += 1
@@ -283,25 +283,3 @@ class CartPoleEnv(Env):
         self.episode += 1
 
         return self.observe()
-
-
-if __name__ == '__main__':
-    import pandas as pd
-
-    env = CartPoleEnv(normalize_observation=True)
-
-    print('Initing')
-
-    states = []
-    for e in range(100):
-        print("Episode ", e)
-        env.reset()
-
-        for ts in range(2):
-            # print("Step ", ts)
-            state, _, _, _ = env.step(env.action_space.sample())
-
-            states.append(state)
-
-    df = pd.DataFrame(states)
-    df.to_csv('stat_hist.csv')
