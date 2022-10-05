@@ -13,8 +13,9 @@ import torch
 from mysac.batch.numpy_batch import (NumpySampledBuffer,
                                      NumpySampledBufferForRNN)
 from mysac.envs.cartpole_ignore_inputs import CartPoleIgnoreStatesEnv
+
 try:
-    from mysac.envs.marta.marta import MartaWalkEnv
+    from mysac.envs.marta.marta import MartaWalkEnv, RecurrentMartaWalkEnv
 except ModuleNotFoundError:
     print('MartaEnv was not found')
 from mysac.envs.nao import RecurrentNAO, WalkingNao
@@ -120,6 +121,9 @@ def run_experiment_from_specs(experiment_folder: str):
 
     elif env_name == 'MartaWalkEnv':
         env = MartaWalkEnv(**specs["env"]["specs"])
+
+    elif env_name == 'RecurrentMartaWalkEnv':
+        env = RecurrentMartaWalkEnv(env=MartaWalkEnv, **specs['env']['specs'])
 
     agent = SACAgent(
         # Env
