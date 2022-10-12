@@ -203,7 +203,7 @@ class MartaWalkEnv:
 
         x, y, z = self.head.get_position()
 
-        done = z < 0.35
+        done = z < 0.65
         done |= 2.15 < y < -2.15
         done |= -2.32 > x > 2.5
 
