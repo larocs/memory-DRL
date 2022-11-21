@@ -1,6 +1,7 @@
 import argparse
 import importlib
 import json
+import pickle
 import shutil
 import subprocess
 from datetime import datetime
@@ -26,7 +27,7 @@ from mysac.trainers.generic_train import generic_train
 from mysac.utils import get_device
 
 
-def create_folders(experiment_folder: str):
+def create_folders(experiment_folder: str) -> str:
     """
     Create the folder structure for the experiment
 
@@ -35,20 +36,34 @@ def create_folders(experiment_folder: str):
 
     Raises:
         FileExistsError: if the structure already exists
+
+    Returns:
+        A literal (o/r/a) choosen by the user
     """
     if path.isdir(experiment_folder + "/models"):
-        confirmation = input("Experiment already exists! Override? [y/N]: ")
+        confirmation = input(
+            "Experiment already exists! (o)verride, (r)esume or (a)bort? "
+            "[o/r/a]: "
+        )
 
-        if confirmation == "n":
-            raise ValueError(
-                "Pick a different folder for the experiment " "artifacts")
+        if confirmation == 'r':
+            return 'r'
 
-        else:
+        elif confirmation == "o":
             shutil.rmtree(experiment_folder + "/models/", ignore_errors=True)
             shutil.rmtree(experiment_folder + "/stats/", ignore_errors=True)
 
-    mkdir(experiment_folder + "/models/")
-    mkdir(experiment_folder + "/stats/")
+            mkdir(experiment_folder + "/models/")
+            mkdir(experiment_folder + "/stats/")
+
+            return 'o'
+
+        else:
+            raise ValueError(
+                "Pick a different folder for the experiment artifacts"
+            )
+
+    return 'noop'
 
 
 def run_experiment_from_specs(experiment_folder: str):
@@ -58,7 +73,7 @@ def run_experiment_from_specs(experiment_folder: str):
         experiment_folder: the path to the experiment folder. If does not
             exists, it is created. If it already exists, we try to load a file
             with specs within it. """
-    create_folders(experiment_folder)
+    option = create_folders(experiment_folder)
 
     meta = {
         "branch": subprocess.check_output(["git", "branch"]).decode(),
@@ -66,6 +81,7 @@ def run_experiment_from_specs(experiment_folder: str):
             ["git", "rev-parse", "--short", "HEAD"]
         ).decode(),
         "date": datetime.now().strftime("%m/%d/%Y, %H:%M:%S"),
+        "option": option
     }
 
     with open(experiment_folder + "/specs.json", "r") as specs_file:
@@ -97,11 +113,26 @@ def run_experiment_from_specs(experiment_folder: str):
         buffer = NumpySampledBufferForRNN(**specs["buffer"])
 
     device = get_device()
-    policy = PolicyModel(**specs["models"]["policy"]).to(device)
-    q1_model = QModel(**specs["models"]["q_model"]).to(device)
-    q1_target = QModel(**specs["models"]["q_model"]).to(device)
-    q2_model = QModel(**specs["models"]["q_model"]).to(device)
-    q2_target = QModel(**specs["models"]["q_model"]).to(device)
+    if option == 'r':
+        print('Loading models')
+        policy = torch.load(experiment_folder + '/models/policy.pt')
+        q1_model = torch.load(experiment_folder + '/models/q1.pt')
+        q2_model = torch.load(experiment_folder + '/models/q2.pt')
+        q1_target = torch.load(experiment_folder + '/models/q1_target.pt')
+        q2_target = torch.load(experiment_folder + '/models/q2_target.pt')
+
+        with open(experiment_folder + '/models/buffer', 'rb') as buffer_file:
+            buffer = pickle.load(buffer_file)
+
+        print(len(buffer))
+
+    else:
+        print('Creating new models')
+        policy = PolicyModel(**specs["models"]["policy"]).to(device)
+        q1_model = QModel(**specs["models"]["q_model"]).to(device)
+        q1_target = QModel(**specs["models"]["q_model"]).to(device)
+        q2_model = QModel(**specs["models"]["q_model"]).to(device)
+        q2_target = QModel(**specs["models"]["q_model"]).to(device)
 
     print("Policy:", policy)
 
@@ -152,11 +183,13 @@ def run_experiment_from_specs(experiment_folder: str):
             **specs["trainer"]
         )
 
-    except KeyboardInterrupt:
+    except Exception as err:
         meta["end_date"] = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
 
         with open(experiment_folder + "/meta.json", "w") as meta_file:
             json.dump(meta, meta_file)
+
+        raise Exception from err
 
 
 def callback_loader(specs: Dict) -> Dict[str, callable]:

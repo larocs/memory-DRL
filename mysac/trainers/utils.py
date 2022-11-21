@@ -2,8 +2,11 @@
 Utils for trainers
 """
 import os
+import pickle
 
 import torch
+
+from mysac.batch.numpy_batch import NumpySampledBuffer
 from mysac.sac.sac import SACAgent
 
 
@@ -21,7 +24,7 @@ class SaveSACModels:
             torch.save(model, folder + f'/{model_name}.pt')
 
     @classmethod
-    def save_sac_models(cls, agent: SACAgent, experiment_folder: str, 
+    def save_sac_models(cls, agent: SACAgent, experiment_folder: str,
                         score: float):
         """
         Save all models related to the given SACAgent
@@ -51,3 +54,14 @@ class SaveSACModels:
                 agent=agent,
                 folder=experiment_folder + '/models/best'
             )
+
+    @classmethod
+    def save_buffer(
+        cls,
+        buffer: NumpySampledBuffer,
+        experiment_folder: str
+    ):
+        """
+        """
+        with open(experiment_folder + '/models/buffer', 'wb') as buffer_file:
+            pickle.dump(buffer, buffer_file)

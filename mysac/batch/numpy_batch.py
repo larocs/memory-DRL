@@ -108,6 +108,9 @@ class NumpySampledBuffer:
             'terminals': terminals
         }
 
+    def __len__(self) -> int:
+        return self.ix
+
 
 class NumpySampledBufferForRNN(NumpySampledBuffer):
     """

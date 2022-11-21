@@ -3,9 +3,10 @@ from typing import Callable, Dict, List
 import numpy as np
 import torch
 from gym import Env
+from tqdm import tqdm
+
 from mysac.sac.sac import SACAgent
 from mysac.samplers.sampler import BasicTrajectorySampler
-from tqdm import tqdm
 
 from .utils import SaveSACModels
 
@@ -36,7 +37,7 @@ def default_eval_callback(
     print('Eval reward:', np.sum(trajectory['rewards']))
     with open(experiment_folder + '/stats/eval_stats.csv', 'a') as stat_f:
         stat_f.write(f'{np.sum(trajectory["rewards"])}\n')
-    
+
     return trajectory
 
 
@@ -98,6 +99,11 @@ def generic_train(
             agent=agent,
             experiment_folder=experiment_folder,
             score=np.sum(eval_trajectory['rewards'])
+        )
+
+        SaveSACModels.save_buffer(
+            buffer=buffer,
+            experiment_folder=experiment_folder
         )
 
         if evaluator:
