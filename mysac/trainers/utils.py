@@ -8,6 +8,7 @@ import torch
 
 from mysac.batch.numpy_batch import NumpySampledBuffer
 from mysac.sac.sac import SACAgent
+from typing import Optional
 
 
 class SaveSACModels:
@@ -24,8 +25,13 @@ class SaveSACModels:
             torch.save(model, folder + f'/{model_name}.pt')
 
     @classmethod
-    def save_sac_models(cls, agent: SACAgent, experiment_folder: str,
-                        score: float):
+    def save_sac_models(
+        cls,
+        agent: SACAgent,
+        experiment_folder: str,
+        score: float,
+        epoch: Optional[int] = None
+    ):
         """
         Save all models related to the given SACAgent
 
@@ -33,11 +39,17 @@ class SaveSACModels:
             agent: the SAC Agent
             experiment_folder: the root of the experiment folder
             score: the current model score
+            epoch: the current epoch
         """
+        base_folder = experiment_folder + '/models'
+
+        if epoch is not None:
+            base_folder += f'/{epoch}/'
+            os.mkdir(path=base_folder)
 
         cls._save_models(
             agent=agent,
-            folder=experiment_folder + '/models'
+            folder=base_folder
         )
 
         if score > cls.BEST_SCORE:

@@ -68,7 +68,7 @@ def generic_train(
         train_steps_per_epoch: how many backward passes per epoch
         num_epochs: the number of epochs for training
     """
-    for _ in range(num_epochs):
+    for current_epoch in range(num_epochs):
         # Eval
         eval_trajectory = eval_callback(
             agent=agent,
@@ -98,7 +98,8 @@ def generic_train(
         SaveSACModels.save_sac_models(
             agent=agent,
             experiment_folder=experiment_folder,
-            score=np.sum(eval_trajectory['rewards'])
+            score=np.sum(eval_trajectory['rewards']),
+            epoch=current_epoch
         )
 
         SaveSACModels.save_buffer(
