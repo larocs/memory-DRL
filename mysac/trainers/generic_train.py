@@ -99,7 +99,7 @@ def generic_train(
             agent=agent,
             experiment_folder=experiment_folder,
             score=np.sum(eval_trajectory['rewards']),
-            epoch=current_epoch
+            epoch=current_epoch if current_epoch > 9_000 else None
         )
 
         SaveSACModels.save_buffer(
@@ -109,3 +109,5 @@ def generic_train(
 
         if evaluator:
             evaluator.save_metrics()
+
+    print('CABO O LOOP')
