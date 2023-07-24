@@ -88,7 +88,8 @@ class NAO:
     Args:
         headless: if True, will not display the CoppeliaSim interface
     """
-    SCENES_FOLDER = ('./mysac/envs/coppelia_scenes/')
+    SCENES_FOLDER = (
+        '/home/figo/Develop/IC/sac_experiments/mysac/envs/coppelia_scenes/')
 
     SCENE_FILE = 'nao_walk_original.ttt'
 
@@ -121,6 +122,11 @@ class NAO:
         self.action_space = spaces.Box(
             low=np.array(len(self.joint_limits) * [-1]),
             high=np.array(len(self.joint_limits) * [1]),
+        )
+
+        self.observation_space = spaces.Box(
+            low=np.array(30 * [np.inf]),
+            high=np.array(30 * [np.inf])
         )
 
         self.pomdp_states = pomdp_states
