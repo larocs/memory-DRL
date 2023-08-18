@@ -112,6 +112,12 @@ def run_experiment_from_specs(experiment_folder: str):
 
         buffer = NumpySampledBufferForRNN(**specs["buffer"])
 
+    elif specs["models"]["mode"] == "stacked_mlp":
+        from mysac.models.stacked import StackedPolicyModel as PolicyModel
+        from mysac.models.stacked import StackedQModel as QModel
+
+        buffer = NumpySampledBufferForRNN(**specs["buffer"])
+
     device = get_device()
     if option == 'r':
         print('Loading models')
