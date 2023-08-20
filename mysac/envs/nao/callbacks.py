@@ -40,6 +40,7 @@ def eval_callback(
         frames.append(env.vision_sensor.capture_rgb())
 
     rewards = []
+    num_steps = []
     for _ in range(NUM_EVAL_STEPS):
         trajectory = BasicTrajectorySampler.sample_trajectory(
             env=env,
@@ -52,12 +53,14 @@ def eval_callback(
         )
 
         rewards.append(trajectory['rewards'].sum())
+        num_steps.append(trajectory['rewards'].shape[0])
 
-    mean = sum(rewards)/NUM_EVAL_STEPS
+    mean_reward = sum(rewards)/NUM_EVAL_STEPS
+    mean_num_steps = sum(num_steps)/NUM_EVAL_STEPS
 
-    print('Mean eval reward:', mean)
+    print('Mean eval reward:', mean_reward)
     with open(experiment_folder + '/stats/eval_stats.csv', 'a') as stat_f:
-        stat_f.write(f'{mean}\n')
+        stat_f.write(f'{mean_reward};{mean_num_steps}\n')
 
     if save_trajectories_gif:
         images = [
