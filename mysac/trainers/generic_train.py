@@ -97,11 +97,15 @@ def generic_train(
 
         score = np.sum(eval_trajectory['rewards'])
 
+        save_model_interval = (
+            (score > 1_000 and score <= 1_800) or score > 8_000
+        )
+
         SaveSACModels.save_sac_models(
             agent=agent,
             experiment_folder=experiment_folder,
             score=score,
-            epoch=current_epoch if score > 8_000 else None
+            epoch=current_epoch if save_model_interval else None
         )
 
         SaveSACModels.save_buffer(
