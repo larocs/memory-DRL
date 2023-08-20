@@ -10,6 +10,7 @@ from pyrep.backend.sim import simGetObjectVelocity
 from pyrep.objects.force_sensor import ForceSensor
 from pyrep.objects.joint import Joint
 from pyrep.objects.shape import Shape
+from pyrep.objects.vision_sensor import VisionSensor
 
 NAO_JOINT_NAMES = [
     "HipYawPitch3",
@@ -104,6 +105,8 @@ class NAO:
 
         self.all_joints: List[Joint] = []
         self.foot_sensors: List[ForceSensor] = []
+        self.vision_sensor: VisionSensor = None
+
         self.joint_limits = []
         self.energy_cost_threshold = energy_cost_threshold
 
@@ -118,6 +121,8 @@ class NAO:
 
         self.load_joints()
         self.load_shapes()
+
+        self.vision_sensor = VisionSensor("Vision_sensor")
 
         self.action_space = spaces.Box(
             low=np.array(len(self.joint_limits) * [-1]),

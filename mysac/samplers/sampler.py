@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Callable
 
 import numpy as np
 import torch
@@ -9,11 +9,13 @@ from mysac.utils import get_device
 class BasicTrajectorySampler:
     @staticmethod
     def sample_trajectory(
-            env: Env, agent, max_steps_per_episode: int,
-            total_steps: int,
-            deterministic: bool = False,
-            single_episode: bool = False,
-            reset_kwargs: dict = None) -> Dict[str, List[float]]:
+        env: Env, agent, max_steps_per_episode: int,
+        total_steps: int,
+        deterministic: bool = False,
+        single_episode: bool = False,
+        reset_kwargs: dict = None,
+        step_callback: Callable[[None], None] = None
+    ) -> Dict[str, List[float]]:
         """ Sample a trajectory
 
         Args:
@@ -26,6 +28,7 @@ class BasicTrajectorySampler:
                 env reset, whichever comes first
             reset_kwargs: a dict of kwargs to be passed to the env.reset()
                 method
+            step_callback: called after each step
 
         Returns:
             5 lists of float values: observations, next observations, rewards,
@@ -74,6 +77,9 @@ class BasicTrajectorySampler:
 
                 steps += 1
                 episode_steps += 1
+
+                if step_callback is not None:
+                    step_callback()
 
             if hasattr(env, 'post_episode_sampling_callback'):
                 episode_rewards = env.post_episode_sampling_callback(
