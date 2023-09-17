@@ -375,13 +375,17 @@ class MassIncreaseCallback:
         return self.current_mass
 
 
-def read_args() -> Tuple[argparse.Namespace, str, dict]:
+def read_args(
+    parser: Optional[argparse.ArgumentParser] = None
+) -> Tuple[argparse.Namespace, str, dict]:
     """
     Read the args from the command line and returns it along with the
     eval_folder path and the env specs
     """
-    parser = argparse.ArgumentParser(description='Evaluates a trained policy '
-                                     'in CartPoleEnv')
+    if parser is None:
+        parser = argparse.ArgumentParser(
+            description='Evaluates a trained policy in CartPoleEnv'
+        )
 
     parser.add_argument('--exp_path', type=str, required=True,
                         help='Source path for model binaries')
